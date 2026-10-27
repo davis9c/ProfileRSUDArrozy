@@ -1,0 +1,38 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-xfknv7cV.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/css/pkrs.css": {
+    "file": "assets/pkrs-C2kTYv3-.css",
+    "src": "resources/css/pkrs.css",
+    "isEntry": true,
+    "name": "pkrs",
+    "names": [
+      "pkrs.css"
+    ]
+  },
+  "resources/css/ppid.css": {
+    "file": "assets/ppid-DAQW9FS3.css",
+    "src": "resources/css/ppid.css",
+    "isEntry": true,
+    "name": "ppid",
+    "names": [
+      "ppid.css"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-BkZ4y3i9.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "css": [
+      "assets/app-DvB2Xm2x.css"
+    ]
+  }
+}

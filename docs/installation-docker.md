@@ -1,0 +1,341 @@
+# Instalasi Docker
+
+Panduan ini menjalankan aplikasi Laravel di Docker, sedangkan MySQL dijalankan secara eksternal (di host atau container MySQL terpisah). Service MySQL sengaja tidak dimasukkan ke `docker-compose.yaml`.
+
+## 1. Prasyarat
+
+- Docker Engine 24+
+- Docker Compose v2
+- MySQL 8.0+ yang dapat diakses dari container aplikasi
+- Port `APP_PORT` (default `8000`) tersedia di host
+- Port `3306` MySQL tersedia jika MySQL berjalan di host
+
+Verifikasi:
+
+```bash
+docker --version
+docker compose version
+```
+
+## 2. Siapkan MySQL Eksternal
+
+Pilih salah satu opsi berikut.
+
+### Opsi A - MySQL Native di Host Linux
+
+Install MySQL di host:
+
+```bash
+sudo apt install -y mysql-server
+sudo systemctl enable --now mysql
+sudo mysql
+```
+
+Buat database dan user:
+
+```sql
+CREATE DATABASE IF NOT EXISTS db_ar_profile
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+CREATE USER IF NOT EXISTS 'profile'@'%' IDENTIFIED BY 'profile123';
+ALTER USER 'profile'@'%' IDENTIFIED BY 'profile123';
+
+GRANT ALL PRIVILEGES ON db_ar_profile.* TO 'profile'@'%';
+FLUSH PRIVILEGES;
+
+EXIT;
+```
+
+Penting: container aplikasi akan menghubungi MySQL melalui `host.docker.internal`. Jika MySQL hanya mendengarkan `127.0.0.1`, container tidak dapat terhubung. Ubah konfigurasi MySQL (misalnya `/etc/mysql/mysql.conf.d/mysqld.cnf`) menjadi:
+
+```ini
+bind-address = 0.0.0.0
+```
+
+Lalu restart MySQL:
+
+```bash
+sudo systemctl restart mysql
+```
+
+Untuk penggunaan lokal, pastikan port `3306` hanya dapat diakses dari mesin sendiri atau gunakan firewall.
+
+### Opsi B - MySQL di Container Terpisah
+
+Jalankan MySQL di luar compose aplikasi:
+
+```bash
+docker run -d \
+  --name rsud-mysql \
+  --restart unless-stopped \
+  -e MYSQL_DATABASE=db_ar_profile \
+  -e MYSQL_USER=profile \
+  -e MYSQL_PASSWORD=profile123 \
+  -e MYSQL_ROOT_PASSWORD=root \
+  -p 3306:3306 \
+  -v rsud_mysql_data:/var/lib/mysql \
+  mysql:8.4
+```
+
+Cek status:
+
+```bash
+docker ps --filter name=rsud-mysql
+docker exec -it rsud-mysql mysql -uprofile -pprofile123 -e "SHOW DATABASES;"
+```
+
+Container ini independen dari `docker-compose.yaml` aplikasi.
+
+## 3. Konfigurasi Environment
+
+Dari root project:
+
+```bash
+cp .env.example .env
+```
+
+Ubah `.env` khusus untuk Docker:
+
+```env
+APP_PORT=8000
+APP_URL=http://localhost:${APP_PORT}
+SERVER_PORT="${APP_PORT}"
+
+DB_CONNECTION=mysql
+DB_HOST=host.docker.internal
+DB_PORT=3306
+DB_DATABASE=db_ar_profile
+DB_USERNAME=profile
+DB_PASSWORD=profile123
+```
+
+`APP_PORT` menentukan port host dan port container. `APP_URL` serta `SERVER_PORT` mengikuti nilai tersebut, jadi cukup ubah `APP_PORT` jika port `8000` sudah dipakai. `docker-compose.yaml` memetakan port dengan `${APP_PORT:-8000}`.
+
+`host.docker.internal` sudah didukung oleh `extra_hosts` di `docker-compose.yaml`:
+
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
+
+Catatan: container membaca konfigurasi dari file `.env` yang di-mount ke `/var/www/html/.env`. Jika Anda mengubah `.env`, jalankan ulang container agar perubahan diterapkan:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+## 4. Build dan Jalankan Aplikasi
+
+```bash
+docker compose build --no-cache
+docker compose up -d
+```
+
+Cek container:
+
+```bash
+docker compose ps
+docker compose logs -f rsud
+```
+
+Jika container sudah berjalan, buka `http://localhost:8000` (atau port sesuai `APP_PORT`). Jika aplikasi belum dikonfigurasi, lanjutkan ke langkah berikut.
+
+## 5. Setup Pertama di Dalam Container
+
+Generate application key:
+
+```bash
+docker compose exec rsud php artisan key:generate
+```
+
+Jalankan migrasi dan seeder dasar:
+
+```bash
+docker compose exec rsud php artisan migrate --seed
+```
+
+Jalankan seeder dokter dan gambar berita:
+
+```bash
+docker compose exec rsud php artisan db:seed --class=DoctorSeeder
+docker compose exec rsud php artisan db:seed --class=NewsImageSeeder
+```
+
+Buat kategori PKRS. Jika memakai MySQL container `rsud-mysql`:
+
+```bash
+docker exec -i rsud-mysql mysql -uprofile -pprofile123 db_ar_profile <<'SQL'
+INSERT INTO pkrs_categories (name, slug, created_at, updated_at) VALUES
+  ('Quotes', 'quotes', NOW(), NOW()),
+  ('Promosi Kesehatan', 'promosi-kesehatan', NOW(), NOW()),
+  ('Artikel Kesehatan', 'artikel-kesehatan', NOW(), NOW()),
+  ('Kegiatan PKRS', 'kegiatan-pkrs', NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  updated_at = VALUES(updated_at);
+SQL
+```
+
+Jika memakai MySQL native di host, gunakan:
+
+```bash
+mysql -h 127.0.0.1 -u profile -p db_ar_profile
+```
+
+lalu jalankan SQL yang sama.
+
+Setelah kategori dibuat:
+
+```bash
+docker compose exec rsud php artisan db:seed --class=PkrsPostSeeder
+docker compose exec rsud php artisan db:seed --class=PkrsGallerySeeder
+```
+
+## 6. Lengkapi Gambar Placeholder
+
+Karena folder project di-mount ke container, buat placeholder dari host:
+
+```bash
+cp public/img/news/clinical.jpg public/img/news/clinical1.jpg
+cp public/img/news/clinical.jpg public/img/news/clinical2.jpg
+cp public/img/news/clinical.jpg public/img/news/clinical3.jpg
+
+mkdir -p storage/app/public/dummy
+for i in 1 2 3 4 5; do
+  cp public/img/news/clinical.jpg "storage/app/public/dummy/gallery${i}.jpg"
+done
+```
+
+## 7. Storage Link
+
+Symlink relatif di repository berfungsi baik di host maupun di dalam container. Verifikasi:
+
+```bash
+docker compose exec rsud ls -la public/storage
+```
+
+Jika symlink belum ada, buat ulang dengan path relatif:
+
+```bash
+docker compose exec rsud sh -c 'rm -f public/storage && ln -s ../storage/app/public public/storage'
+```
+
+Gunakan symlink relatif agar tidak bergantung pada path host atau path container.
+
+## 8. Bersihkan Cache
+
+```bash
+docker compose exec rsud php artisan optimize:clear
+```
+
+## 9. Akses Aplikasi
+
+- Frontend: `http://localhost:8000` (atau port sesuai `APP_PORT`)
+- Admin: `http://localhost:8000/admin/login` (atau port sesuai `APP_PORT`)
+- Email: `admin@company.com`
+- Password: `password`
+
+Segera ganti password admin setelah login.
+
+## 10. Log dan Stop
+
+Lihat log:
+
+```bash
+docker compose logs -f rsud
+```
+
+Stop aplikasi:
+
+```bash
+docker compose down
+```
+
+Stop sekaligus menghapus container aplikasi (volume MySQL eksternal tidak terhapus):
+
+```bash
+docker compose down -v
+```
+
+## 11. Reset Database
+
+Untuk mengulang data demo:
+
+```bash
+docker compose exec rsud php artisan migrate:fresh --seed
+docker compose exec rsud php artisan db:seed --class=DoctorSeeder
+docker compose exec rsud php artisan db:seed --class=NewsImageSeeder
+```
+
+Ulangi pembuatan kategori PKRS, `PkrsPostSeeder`, dan `PkrsGallerySeeder` setelahnya.
+
+Untuk menghapus database MySQL eksternal:
+
+```bash
+docker exec -it rsud-mysql mysql -uroot -proot -e "
+  DROP DATABASE IF EXISTS db_ar_profile;
+  CREATE DATABASE db_ar_profile CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+"
+```
+
+Sesuaikan kredensial jika MySQL bukan container `rsud-mysql`.
+
+## Troubleshooting
+
+### `SQLSTATE[HY000] [2002] Connection refused`
+
+- Pastikan MySQL berjalan dan port `3306` terbuka.
+- Pastikan `DB_HOST=host.docker.internal`, bukan `127.0.0.1` (di dalam container, `127.0.0.1` adalah container itu sendiri).
+- Jika MySQL native hanya bind ke `127.0.0.1`, ubah `bind-address` menjadi `0.0.0.0`.
+- Cek koneksi dari container:
+
+```bash
+docker compose exec rsud mysql -h host.docker.internal -u profile -pprofile123 -e "SELECT 1;"
+```
+
+### `Access denied for user 'profile'@'...'`
+
+- Pastikan user MySQL memakai host `%` atau host yang sesuai dengan asal koneksi container.
+- Pastikan password di `.env` sama dengan password MySQL.
+
+### `host.docker.internal` tidak ditemukan
+
+Pastikan `extra_hosts` ada di `docker-compose.yaml` dan Docker Engine mendukung `host-gateway` (Docker 20.10+). Untuk Docker Desktop, `host.docker.internal` biasanya sudah tersedia.
+
+### Permission denied pada `storage` atau `bootstrap/cache`
+
+Container berjalan sebagai root dan dapat membuat file milik root di host. Perbaiki dari host:
+
+```bash
+sudo chown -R "$USER":"$USER" storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
+```
+
+### Port 8000 sudah dipakai
+
+Ubah `APP_PORT` di `.env`, misalnya menjadi `8001`:
+
+```env
+APP_PORT=8001
+```
+
+`APP_URL` dan `SERVER_PORT` akan mengikuti nilai tersebut. Jalankan ulang container dan bersihkan cache:
+
+```bash
+docker compose up -d --force-recreate
+docker compose exec rsud php artisan optimize:clear
+```
+
+Tidak perlu mengubah `docker-compose.yaml`; port host dan container mengikuti `APP_PORT`.
+
+### `Vite manifest not found`
+
+Asset build sudah tersedia di `public/build`. Jika folder tersebut hilang, jalankan di host:
+
+```bash
+npm install
+npm run build
+```
+
+Atau build di container Node terpisah jika Node tidak tersedia di host.
