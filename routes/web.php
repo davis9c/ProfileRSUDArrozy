@@ -60,6 +60,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 // Admin Panel (Authenticated)
 Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
+    Route::redirect('/', '/admin/dashboard');
+
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::resource('doctors', AdminDoctorController::class);
