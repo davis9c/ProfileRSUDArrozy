@@ -78,7 +78,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::delete('/{news}', [NewsController::class, 'destroy'])->name('destroy');
         Route::delete('/image/{image}', [NewsController::class, 'destroyImage'])->name('image.destroy');
     });
-    Route::resource('pkrs-categories', PkrsCategoryAdminController::class);
+    Route::resource('pkrs-categories', PkrsCategoryAdminController::class)->except('show');
 
     Route::patch('pkrs-posts/{pkrsPost}/toggle-publish', [PkrsPostController::class, 'togglePublish'])
         ->name('pkrs-posts.toggle-publish');
@@ -87,7 +87,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::prefix('pkrs-posts/{post}')
         ->name('pkrs-posts.')
         ->group(function () {
-            Route::resource('galleries', PkrsGalleryController::class);
+            Route::resource('galleries', PkrsGalleryController::class)->except('show');
         });
 
     // Settings

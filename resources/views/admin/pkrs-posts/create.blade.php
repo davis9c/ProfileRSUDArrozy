@@ -2,27 +2,20 @@
 
 @section('title', 'Tambah Post PKRS')
 
-@push('styles')
-@include('admin.pkrs-posts.partials._styles')
-@endpush
-
 @section('content')
 
-<div class="container-fluid">
+<form
+    id="pkrs-post-form"
+    method="POST"
+    action="{{ route('admin.pkrs-posts.store') }}"
+    enctype="multipart/form-data"
+    class="space-y-6">
 
-    @include('admin.pkrs-posts.partials._header')
+    @csrf
 
-    <form action="{{ route('admin.pkrs-posts.store') }}"
-        method="POST"
-        enctype="multipart/form-data">
+    @include('admin.pkrs-posts.partials._form', ['post' => null])
 
-        @csrf
-
-        @include('admin.pkrs-posts.partials._form')
-
-    </form>
-
-</div>
+</form>
 
 @endsection
 

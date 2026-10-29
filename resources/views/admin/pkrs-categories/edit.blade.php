@@ -4,39 +4,20 @@
 
 @section('content')
 
-    <div class="container-fluid">
+<form
+    method="POST"
+    action="{{ route('admin.pkrs-categories.update', $category) }}"
+    class="space-y-6">
 
-        <div class="d-flex justify-content-between align-items-center mb-4">
+    @csrf
+    @method('PUT')
 
-            <div>
+    @include('admin.pkrs-categories.form', ['category' => $category])
 
-                <h3 class="fw-bold mb-1">
-                    Edit Kategori PKRS
-                </h3>
-
-                <p class="text-muted mb-0">
-                    Perbarui data kategori.
-                </p>
-
-            </div>
-
-            <a href="{{ route('admin.pkrs-categories.index') }}" class="btn btn-outline-secondary">
-
-                Kembali
-
-            </a>
-
-        </div>
-
-        <form action="{{ route('admin.pkrs-categories.update', $category) }}" method="POST">
-
-            @csrf
-            @method('PUT')
-
-            @include('admin.pkrs-categories.form')
-
-        </form>
-
-    </div>
+</form>
 
 @endsection
+
+@push('scripts')
+@include('admin.pkrs-categories.partials._scripts')
+@endpush

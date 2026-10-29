@@ -1362,14 +1362,14 @@ return $post->category?->name ?? 'PKRS';
                 @php
                 $groupFirstPost = $groupPosts->first();
 
-                $groupThumbnail = $groupFirstPost?->thumbnail;
+                $groupThumbnail = $groupFirstPost?->thumbnail_url;
 
                 if (
                 !$groupThumbnail &&
                 $groupFirstPost?->type === 'video' &&
-                $groupFirstPost?->video_cover
+                $groupFirstPost?->video_cover_url
                 ) {
-                $groupThumbnail = $groupFirstPost->video_cover;
+                $groupThumbnail = $groupFirstPost->video_cover_url;
                 }
                 @endphp
 
@@ -1383,7 +1383,7 @@ return $post->category?->name ?? 'PKRS';
                         @if ($groupThumbnail)
 
                         <img
-                            src="{{ asset('storage/' . $groupThumbnail) }}"
+                            src="{{ $groupThumbnail }}"
                             alt="{{ $categoryName }}"
                             loading="lazy">
 
@@ -1582,9 +1582,7 @@ $galleryImages = [];
 
 if (!empty($post->thumbnail)) {
 
-$galleryImages[] = asset(
-'storage/' . $post->thumbnail
-);
+$galleryImages[] = $post->thumbnail_url;
 
 }
 
@@ -1604,9 +1602,7 @@ foreach ($post->galleries as $gallery) {
 
 if (!empty($gallery->image)) {
 
-$galleryImages[] = asset(
-'storage/' . $gallery->image
-);
+$galleryImages[] = $gallery->image_url;
 
 }
 
@@ -1641,21 +1637,12 @@ $post->views ?? 0
 
 'type' => $post->type,
 
-'thumbnail' => $post->thumbnail
-? asset('storage/' . $post->thumbnail)
-: null,
+'thumbnail' => $post->thumbnail_url,
 
-'video' => $post->video
-? asset('storage/' . $post->video)
-: null,
+'video' => $post->video_url,
 
-'video_cover' => $post->video_cover
-? asset('storage/' . $post->video_cover)
-: (
-$post->thumbnail
-? asset('storage/' . $post->thumbnail)
-: null
-),
+'video_cover' => $post->video_cover_url
+?: $post->thumbnail_url,
 
 /*
 |--------------------------------------------------------------------------

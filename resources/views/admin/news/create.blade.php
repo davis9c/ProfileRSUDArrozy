@@ -6,22 +6,6 @@
     <form method="POST" action="{{ route('admin.news.store') }}" enctype="multipart/form-data" class="space-y-6"
         x-data="newsImageForm()">
 
-        @if ($errors->any())
-            <div
-                class="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300"
-                role="alert"
-            >
-                <p class="font-semibold mb-2">
-                    Berita belum dapat disimpan.
-                </p>
-
-                <ul class="list-disc pl-5 space-y-1 text-sm">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
         @csrf
 
         <div class="admin-card p-6 space-y-5">

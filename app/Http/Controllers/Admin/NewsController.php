@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\StoresUploads;
 use App\Http\Controllers\Controller;
 use App\Models\News;
 use App\Models\NewsImage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class NewsController extends Controller
 {
+    use StoresUploads;
+
     // ============ FRONTEND (sudah ada, jangan diubah) ============
 
     public function index()
@@ -209,20 +213,42 @@ class NewsController extends Controller
         $validated = $this->validateNews($request);
 
         $validated['slug'] = $this->generateUniqueSlug($validated['title']);
-
-        if ($request->hasFile('thumbnail')) {
-            $validated['thumbnail'] = $request->file('thumbnail')->store('news/thumbnails', 'public');
-        }
-
-        $validated['excerpt'] = $validated['excerpt'] ?: Str::limit(strip_tags($validated['content']), 150);
+        $validated['excerpt'] = ($validated['excerpt'] ?? null)
+            ?: Str::limit(strip_tags($validated['content']), 150);
         $validated['featured'] = $request->boolean('featured');
         $validated['published_at'] = $validated['status'] === 'published'
             ? ($validated['published_at'] ?? now())
-            : $validated['published_at'];
+            : ($validated['published_at'] ?? null);
 
-        $news = News::create($validated);
+        $storedFiles = [];
 
-        $this->storeImages($request, $news);
+        DB::beginTransaction();
+
+        try {
+            if ($request->hasFile('thumbnail')) {
+                $validated['thumbnail'] = $this->storeUpload(
+                    $request->file('thumbnail'),
+                    'news/thumbnails'
+                );
+                $storedFiles[] = $validated['thumbnail'];
+            }
+
+            $news = News::create($validated);
+
+            $this->storeImages($request, $news, $storedFiles);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            if ($storedFiles !== []) {
+                Storage::disk('public')->delete($storedFiles);
+            }
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()->route('admin.news.index')->with('success', 'Berita berhasil ditambahkan.');
     }
@@ -245,19 +271,51 @@ class NewsController extends Controller
             $validated['slug'] = $this->generateUniqueSlug($validated['title'], $news->id);
         }
 
-        if ($request->hasFile('thumbnail')) {
-            if ($news->thumbnail && !str_starts_with($news->thumbnail, '/')) {
-                Storage::disk('public')->delete($news->thumbnail);
-            }
-            $validated['thumbnail'] = $request->file('thumbnail')->store('news/thumbnails', 'public');
-        }
-
-        $validated['excerpt'] = $validated['excerpt'] ?: Str::limit(strip_tags($validated['content']), 150);
+        $validated['excerpt'] = ($validated['excerpt'] ?? null)
+            ?: Str::limit(strip_tags($validated['content']), 150);
         $validated['featured'] = $request->boolean('featured');
 
-        $news->update($validated);
+        $oldThumbnail = $news->thumbnail;
+        $storedFiles = [];
 
-        $this->storeImages($request, $news);
+        DB::beginTransaction();
+
+        try {
+            if ($request->hasFile('thumbnail')) {
+                $validated['thumbnail'] = $this->storeUpload(
+                    $request->file('thumbnail'),
+                    'news/thumbnails'
+                );
+                $storedFiles[] = $validated['thumbnail'];
+            } else {
+                unset($validated['thumbnail']);
+            }
+
+            $news->update($validated);
+
+            $this->storeImages($request, $news, $storedFiles);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            if ($storedFiles !== []) {
+                Storage::disk('public')->delete($storedFiles);
+            }
+
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
+
+        if (
+            isset($validated['thumbnail'])
+            && $oldThumbnail
+            && $oldThumbnail !== $validated['thumbnail']
+            && !str_starts_with($oldThumbnail, '/')
+        ) {
+            Storage::disk('public')->delete($oldThumbnail);
+        }
 
         return redirect()->route('admin.news.index')->with('success', 'Berita berhasil diperbarui.');
     }
@@ -328,7 +386,7 @@ class NewsController extends Controller
         return $slug;
     }
 
-    private function storeImages(Request $request, News $news): void
+    private function storeImages(Request $request, News $news, array &$storedFiles = []): void
     {
         if (!$request->hasFile('images')) {
             return;
@@ -340,9 +398,12 @@ class NewsController extends Controller
         foreach ($request->file('images') as $index => $file) {
             $lastOrder++;
 
+            $path = $this->storeUpload($file, 'news/images');
+            $storedFiles[] = $path;
+
             NewsImage::create([
                 'news_id' => $news->id,
-                'image_path' => $file->store('news/images', 'public'),
+                'image_path' => $path,
                 'caption' => $captions[$index] ?? null,
                 'order' => $lastOrder,
             ]);

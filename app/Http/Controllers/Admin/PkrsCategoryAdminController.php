@@ -30,11 +30,6 @@ class PkrsCategoryAdminController extends Controller
             ->with('success', 'Kategori berhasil ditambahkan.');
     }
 
-    public function show(PkrsCategory $pkrs_category)
-    {
-        abort(404);
-    }
-
     public function edit(PkrsCategory $pkrs_category)
     {
         return view('admin.pkrs-categories.edit', [

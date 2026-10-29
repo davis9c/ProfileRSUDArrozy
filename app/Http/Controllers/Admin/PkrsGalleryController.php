@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\StoresUploads;
 use App\Http\Controllers\Controller;
 use App\Models\PkrsGallery;
 use App\Models\PkrsPost;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PkrsGalleryController extends Controller
 {
+    use StoresUploads;
+
     /**
      * Display a listing of galleries.
      */
@@ -50,7 +53,7 @@ class PkrsGalleryController extends Controller
                 'required',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:2048',
+                'max:20480',
             ],
 
             'sort_order' => [
@@ -60,55 +63,39 @@ class PkrsGalleryController extends Controller
             ],
         ]);
 
+        DB::beginTransaction();
 
-        $image = $request
-            ->file('image')
-            ->store(
-                'pkrs/galleries',
-                'public'
+        try {
+            $image = $this->storeUpload(
+                $request->file('image'),
+                'pkrs/galleries'
             );
 
+            $sortOrder = $validated['sort_order']
+                ?? (($post->galleries()->max('sort_order') ?? 0) + 1);
 
-        $sortOrder = $validated['sort_order']
-            ?? (($post->galleries()->max('sort_order') ?? 0) + 1);
+            PkrsGallery::create([
+                'pkrs_post_id' => $post->id,
+                'image' => $image,
+                'sort_order' => $sortOrder,
+            ]);
 
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
 
-        PkrsGallery::create([
-            'pkrs_post_id' => $post->id,
-            'image'        => $image,
-            'sort_order'   => $sortOrder,
-        ]);
+            if (isset($image)) {
+                Storage::disk('public')->delete($image);
+            }
 
+            return back()
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()
-            ->route(
-                'admin.pkrs-posts.galleries.index',
-                $post
-            )
-            ->with(
-                'success',
-                'Gallery berhasil ditambahkan.'
-            );
-    }
-
-
-    /**
-     * Display the specified gallery.
-     */
-    public function show(
-        PkrsPost $post,
-        PkrsGallery $gallery
-    ) {
-        $this->ensureGalleryBelongsToPost(
-            $post,
-            $gallery
-        );
-
-
-        return view('admin.pkrs-galleries.show', [
-            'post' => $post,
-            'gallery' => $gallery,
-        ]);
+            ->route('admin.pkrs-posts.galleries.index', $post)
+            ->with('success', 'Gallery berhasil ditambahkan.');
     }
 
 
@@ -151,7 +138,7 @@ class PkrsGalleryController extends Controller
                 'nullable',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:2048',
+                'max:20480',
             ],
 
             'sort_order' => [
@@ -162,7 +149,7 @@ class PkrsGalleryController extends Controller
         ], [
             'image.image' => 'File harus berupa gambar.',
             'image.mimes' => 'Format gambar harus JPG, JPEG, PNG, atau WEBP.',
-            'image.max' => 'Ukuran gambar maksimal 2 MB.',
+            'image.max' => 'Ukuran gambar maksimal 20 MB.',
 
             'sort_order.integer' => 'Urutan harus berupa angka.',
             'sort_order.min' => 'Urutan tidak boleh kurang dari 0.',
@@ -186,12 +173,10 @@ class PkrsGalleryController extends Controller
 
             if ($request->hasFile('image')) {
 
-                $data['image'] = $request
-                    ->file('image')
-                    ->store(
-                        'pkrs/galleries',
-                        'public'
-                    );
+                $data['image'] = $this->storeUpload(
+                    $request->file('image'),
+                    'pkrs/galleries'
+                );
             }
 
 

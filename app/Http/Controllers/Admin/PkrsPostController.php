@@ -2,32 +2,51 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\StoresUploads;
 use App\Http\Controllers\Controller;
-use App\Models\PkrsPost;
-use App\Models\PkrsCategory;
-use Illuminate\Http\Request;
 use App\Http\Requests\StorePkrsPostRequest;
+use App\Http\Requests\UpdatePkrsPostRequest;
+use App\Models\PkrsCategory;
+use App\Models\PkrsPost;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Http\Requests\UpdatePkrsPostRequest;
 
 class PkrsPostController extends Controller
 {
+    use StoresUploads;
+
     /**
      * Display a listing of posts.
      */
-    public function index()
+    public function index(Request $request)
     {
         $posts = PkrsPost::with('category')
+            ->when(
+                $request->filled('search'),
+                fn ($query) => $query->where('title', 'like', '%' . $request->search . '%')
+            )
+            ->when(
+                $request->filled('type'),
+                fn ($query) => $query->where('type', $request->type)
+            )
+            ->when(
+                $request->filled('status'),
+                function ($query) use ($request) {
+                    if ($request->status === 'published') {
+                        $query->where('is_published', true);
+                    } elseif ($request->status === 'draft') {
+                        $query->where('is_published', false);
+                    }
+                }
+            )
             ->latest()
-            ->paginate(10);
-
-        // dd($posts->first()->toArray());
+            ->paginate(10)
+            ->withQueryString();
 
         return view('admin.pkrs-posts.index', compact('posts'));
     }
-
 
     /**
      * Show form create.
@@ -41,205 +60,103 @@ class PkrsPostController extends Controller
 
     public function store(StorePkrsPostRequest $request)
     {
+        $data = $request->validated();
+        $storedFiles = [];
+
         DB::beginTransaction();
 
         try {
-
-            $data = $request->validated();
-
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Upload Thumbnail
-        |--------------------------------------------------------------------------
-        */
-
             if ($request->hasFile('thumbnail')) {
-
-                $data['thumbnail'] =
-                    $request
-                    ->file('thumbnail')
-                    ->store(
-                        'pkrs/posts/thumbnails',
-                        'public'
-                    );
+                $data['thumbnail'] = $this->storeUpload(
+                    $request->file('thumbnail'),
+                    'pkrs/posts/thumbnails'
+                );
+                $storedFiles[] = $data['thumbnail'];
             }
 
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Upload Video Cover
-        |--------------------------------------------------------------------------
-        */
-
-            if ($request->hasFile('video_cover')) {
-
-                $data['video_cover'] =
-                    $request
-                    ->file('video_cover')
-                    ->store(
-                        'pkrs/posts/video-covers',
-                        'public'
-                    );
-            }
-
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Boolean
-        |--------------------------------------------------------------------------
-        */
-
-            $data['featured'] =
-                $request->boolean('featured');
-
-
-            $data['is_published'] =
-                $request->boolean('is_published');
-
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Publish Date
-        |--------------------------------------------------------------------------
-        */
-
-            if (
-                $data['is_published']
-                &&
-                empty($data['published_at'])
-            ) {
-
-                $data['published_at'] = now();
-            }
-
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Remove Video Data
-        |--------------------------------------------------------------------------
-        */
-
-            if ($data['type'] !== 'video') {
-
+            if ($data['type'] === 'video' && $request->hasFile('video')) {
+                $data['video'] = $this->storeUpload(
+                    $request->file('video'),
+                    'pkrs/posts/videos'
+                );
+                $storedFiles[] = $data['video'];
+            } else {
                 $data['video'] = null;
+            }
 
+            if ($data['type'] === 'video' && $request->hasFile('video_cover')) {
+                $data['video_cover'] = $this->storeUpload(
+                    $request->file('video_cover'),
+                    'pkrs/posts/video-covers'
+                );
+                $storedFiles[] = $data['video_cover'];
+            } else {
                 $data['video_cover'] = null;
             }
 
+            $data['featured'] = $request->boolean('featured');
+            $data['is_published'] = $request->boolean('is_published');
 
+            if ($data['is_published']) {
+                $data['published_at'] = $data['published_at'] ?? now();
+            } else {
+                $data['published_at'] = null;
+            }
 
-            /*
-        |--------------------------------------------------------------------------
-        | Create Post
-        |--------------------------------------------------------------------------
-        */
+            $data['excerpt'] = trim((string) ($data['excerpt'] ?? ''))
+                ?: Str::limit(strip_tags($data['content']), 500);
 
             $post = PkrsPost::create($data);
 
-
-
             DB::commit();
 
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Redirect Gallery
-        |--------------------------------------------------------------------------
-        */
-
             if ($post->type === 'gallery') {
-
                 return redirect()
-                    ->route(
-                        'admin.pkrs-posts.galleries.index',
-                        $post->id
-                    )
-                    ->with(
-                        'success',
-                        'Post berhasil dibuat. Silakan upload gallery.'
-                    );
+                    ->route('admin.pkrs-posts.galleries.index', $post)
+                    ->with('success', 'Post berhasil dibuat. Silakan upload gallery.');
             }
-
-
 
             return redirect()
                 ->route('admin.pkrs-posts.index')
-                ->with(
-                    'success',
-                    'Post PKRS berhasil ditambahkan.'
-                );
+                ->with('success', 'Post PKRS berhasil ditambahkan.');
         } catch (\Throwable $e) {
-
-
             DB::rollBack();
 
-
-
-            if (isset($data['thumbnail'])) {
-
-                Storage::disk('public')
-                    ->delete($data['thumbnail']);
+            if ($storedFiles !== []) {
+                Storage::disk('public')->delete($storedFiles);
             }
-
-
-
-            if (isset($data['video_cover'])) {
-
-                Storage::disk('public')
-                    ->delete($data['video_cover']);
-            }
-
-
 
             return back()
                 ->withInput()
-                ->with(
-                    'error',
-                    $e->getMessage()
-                );
+                ->with('error', $e->getMessage());
         }
     }
 
-
     /**
-     * Display detail post.
-     */
-    /**
-     * Preview post (AJAX)
+     * Preview post (AJAX).
      */
     public function show(PkrsPost $pkrsPost)
     {
-        $start = microtime(true);
+        $pkrsPost->load(['category', 'galleries']);
 
-        $pkrsPost->load('category');
-
-        $response = [
-            'id'           => $pkrsPost->id,
-            'title'        => $pkrsPost->title,
-            'category'     => $pkrsPost->category?->name,
-            'excerpt'      => $pkrsPost->excerpt,
-            'content'      => $pkrsPost->content,
-            'thumbnail'    => $pkrsPost->thumbnail
-                ? asset('storage/' . $pkrsPost->thumbnail)
-                : null,
-            'type'         => ucfirst($pkrsPost->type),
-            'featured'     => $pkrsPost->featured,
-            'published'    => $pkrsPost->is_published,
+        return response()->json([
+            'id' => $pkrsPost->id,
+            'title' => $pkrsPost->title,
+            'category' => $pkrsPost->category?->name,
+            'excerpt' => $pkrsPost->excerpt,
+            'content' => $pkrsPost->content,
+            'thumbnail' => $pkrsPost->thumbnail_url,
+            'video' => $pkrsPost->video_url,
+            'video_cover' => $pkrsPost->video_cover_url,
+            'type' => ucfirst($pkrsPost->type),
+            'featured' => $pkrsPost->featured,
+            'published' => $pkrsPost->is_published,
             'published_at' => optional($pkrsPost->published_at)?->format('d M Y H:i'),
-        ];
-
-        logger('SHOW POST : ' . round((microtime(true) - $start) * 1000, 2) . ' ms');
-
-        return response()->json($response);
+            'galleries' => $pkrsPost->galleries->map(
+                fn ($gallery) => $gallery->image_url
+            )->values(),
+        ]);
     }
-
 
     /**
      * Edit post.
@@ -259,263 +176,147 @@ class PkrsPostController extends Controller
     /**
      * Update post.
      */
-    /**
-     * Update post.
-     */
     public function update(UpdatePkrsPostRequest $request, PkrsPost $pkrsPost)
     {
+        $data = $request->validated();
+        $storedFiles = [];
+
+        if ($data['type'] === 'video' && ! $request->hasFile('video') && ! $pkrsPost->video) {
+            return back()
+                ->withInput()
+                ->withErrors(['video' => 'File video wajib diupload jika jenis post adalah Video.']);
+        }
+
+        $oldThumbnail = $pkrsPost->thumbnail;
+        $oldVideo = $pkrsPost->video;
+        $oldVideoCover = $pkrsPost->video_cover;
+
         DB::beginTransaction();
 
         try {
-
-            $data = $request->validated();
-
-            /*
-        |--------------------------------------------------------------------------
-        | Simpan file lama
-        |--------------------------------------------------------------------------
-        */
-
-            $oldThumbnail = $pkrsPost->thumbnail;
-            $oldVideoCover = $pkrsPost->video_cover;
-
-            /*
-        |--------------------------------------------------------------------------
-        | Upload Thumbnail Baru
-        |--------------------------------------------------------------------------
-        */
-
             if ($request->hasFile('thumbnail')) {
-
-                $data['thumbnail'] = $request
-                    ->file('thumbnail')
-                    ->store(
-                        'pkrs/posts/thumbnails',
-                        'public'
-                    );
+                $data['thumbnail'] = $this->storeUpload(
+                    $request->file('thumbnail'),
+                    'pkrs/posts/thumbnails'
+                );
+                $storedFiles[] = $data['thumbnail'];
             } else {
-
-                // Jangan hapus thumbnail lama dari data update
                 unset($data['thumbnail']);
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | Upload Video Cover Baru
-        |--------------------------------------------------------------------------
-        */
-
-            if ($request->hasFile('video_cover')) {
-
-                $data['video_cover'] = $request
-                    ->file('video_cover')
-                    ->store(
-                        'pkrs/posts/video-covers',
-                        'public'
-                    );
-            } else {
-
-                // Pertahankan cover lama
-                unset($data['video_cover']);
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | Boolean
-        |--------------------------------------------------------------------------
-        */
-
-            $data['featured'] =
-                $request->boolean('featured');
-
-            $data['is_published'] =
-                $request->boolean('is_published');
-
-            /*
-        |--------------------------------------------------------------------------
-        | Publish Date
-        |--------------------------------------------------------------------------
-        */
-
-            if (
-                $data['is_published']
-                && empty($data['published_at'])
-            ) {
-
-                $data['published_at'] = now();
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | Jika tidak publish
-        |--------------------------------------------------------------------------
-        */
-
-            if (!$data['is_published']) {
-
-                $data['published_at'] = null;
-            }
-
-            /*
-        |--------------------------------------------------------------------------
-        | Jika bukan video
-        |--------------------------------------------------------------------------
-        */
-
-            if ($data['type'] !== 'video') {
-
+            if ($data['type'] === 'video' && $request->hasFile('video')) {
+                $data['video'] = $this->storeUpload(
+                    $request->file('video'),
+                    'pkrs/posts/videos'
+                );
+                $storedFiles[] = $data['video'];
+            } elseif ($data['type'] !== 'video') {
                 $data['video'] = null;
+            }
+
+            if ($data['type'] === 'video' && $request->hasFile('video_cover')) {
+                $data['video_cover'] = $this->storeUpload(
+                    $request->file('video_cover'),
+                    'pkrs/posts/video-covers'
+                );
+                $storedFiles[] = $data['video_cover'];
+            } elseif ($data['type'] !== 'video') {
                 $data['video_cover'] = null;
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | Update Post
-        |--------------------------------------------------------------------------
-        */
+            $data['featured'] = $request->boolean('featured');
+            $data['is_published'] = $request->boolean('is_published');
+
+            if ($data['is_published']) {
+                $data['published_at'] = $data['published_at'] ?? now();
+            } else {
+                $data['published_at'] = null;
+            }
+
+            $data['excerpt'] = trim((string) ($data['excerpt'] ?? ''))
+                ?: Str::limit(strip_tags($data['content']), 500);
 
             $pkrsPost->update($data);
 
             DB::commit();
 
-            /*
-        |--------------------------------------------------------------------------
-        | Hapus file lama setelah update berhasil
-        |--------------------------------------------------------------------------
-        */
-
-            if (
-                isset($data['thumbnail'])
-                && $oldThumbnail
-                && $oldThumbnail !== $data['thumbnail']
-            ) {
-
-                Storage::disk('public')
-                    ->delete($oldThumbnail);
+            if (isset($data['thumbnail']) && $oldThumbnail && $oldThumbnail !== $data['thumbnail']) {
+                Storage::disk('public')->delete($oldThumbnail);
             }
 
-            if (
-                isset($data['video_cover'])
-                && $oldVideoCover
-                && $oldVideoCover !== $data['video_cover']
-            ) {
-
-                Storage::disk('public')
-                    ->delete($oldVideoCover);
+            if ($oldVideo && array_key_exists('video', $data) && $oldVideo !== $data['video']) {
+                Storage::disk('public')->delete($oldVideo);
             }
 
-            /*
-        |--------------------------------------------------------------------------
-        | Jika type berubah dari video
-        |--------------------------------------------------------------------------
-        */
-
-            if (
-                $pkrsPost->type !== 'video'
-                && $oldVideoCover
-                && !isset($data['video_cover'])
-            ) {
-
-                Storage::disk('public')
-                    ->delete($oldVideoCover);
+            if ($oldVideoCover && array_key_exists('video_cover', $data) && $oldVideoCover !== $data['video_cover']) {
+                Storage::disk('public')->delete($oldVideoCover);
             }
-
-            /*
-        |--------------------------------------------------------------------------
-        | Gallery
-        |--------------------------------------------------------------------------
-        */
 
             if ($pkrsPost->type === 'gallery') {
-
                 return redirect()
-                    ->route(
-                        'admin.pkrs-posts.galleries.index',
-                        $pkrsPost->id
-                    )
-                    ->with(
-                        'success',
-                        'Post berhasil diperbarui. Silakan kelola gallery.'
-                    );
+                    ->route('admin.pkrs-posts.galleries.index', $pkrsPost)
+                    ->with('success', 'Post berhasil diperbarui. Silakan kelola gallery.');
             }
 
             return redirect()
                 ->route('admin.pkrs-posts.index')
-                ->with(
-                    'success',
-                    'Post PKRS berhasil diperbarui.'
-                );
+                ->with('success', 'Post PKRS berhasil diperbarui.');
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
-            /*
-        |--------------------------------------------------------------------------
-        | Hapus upload baru jika update gagal
-        |--------------------------------------------------------------------------
-        */
-
-            if (
-                isset($data['thumbnail'])
-                && $data['thumbnail'] !== $pkrsPost->thumbnail
-            ) {
-
-                Storage::disk('public')
-                    ->delete($data['thumbnail']);
-            }
-
-            if (
-                isset($data['video_cover'])
-                && $data['video_cover'] !== $pkrsPost->video_cover
-            ) {
-
-                Storage::disk('public')
-                    ->delete($data['video_cover']);
+            if ($storedFiles !== []) {
+                Storage::disk('public')->delete($storedFiles);
             }
 
             return back()
                 ->withInput()
-                ->with(
-                    'error',
-                    $e->getMessage()
-                );
+                ->with('error', $e->getMessage());
         }
     }
-
 
     /**
      * Toggle post publish status.
      */
-    public function togglePublish(PkrsPost $pkrsPost)
+    public function togglePublish(Request $request, PkrsPost $pkrsPost)
     {
         try {
-
             $pkrsPost->is_published = ! $pkrsPost->is_published;
 
             if ($pkrsPost->is_published && empty($pkrsPost->published_at)) {
-
                 $pkrsPost->published_at = now();
+            }
+
+            if (! $pkrsPost->is_published) {
+                $pkrsPost->published_at = null;
             }
 
             $pkrsPost->save();
 
-            return response()->json([
-                'success'      => true,
-                'is_published' => $pkrsPost->is_published,
-                'published_at' => optional($pkrsPost->published_at)->format('d M Y H:i'),
-                'message'      => $pkrsPost->is_published
-                    ? 'Post berhasil ditayangkan.'
-                    : 'Post berhasil disembunyikan sementara.',
-            ]);
-        } catch (\Throwable $e) {
+            $message = $pkrsPost->is_published
+                ? 'Post berhasil ditayangkan.'
+                : 'Post berhasil disembunyikan sementara.';
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'is_published' => $pkrsPost->is_published,
+                    'published_at' => optional($pkrsPost->published_at)->format('d M Y H:i'),
+                    'message' => $message,
+                ]);
+            }
+
+            return back()->with('success', $message);
+        } catch (\Throwable $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', $e->getMessage());
         }
     }
-
 
     /**
      * Delete post.
@@ -525,22 +326,19 @@ class PkrsPostController extends Controller
         DB::beginTransaction();
 
         try {
-
             $thumbnail = $pkrsPost->thumbnail;
+            $video = $pkrsPost->video;
             $videoCover = $pkrsPost->video_cover;
 
-            $galleryImages = $pkrsPost
-                ->galleries()
+            $galleryImages = $pkrsPost->galleries()
                 ->pluck('image')
                 ->all();
 
             $pkrsPost->galleries()->delete();
-
             $pkrsPost->delete();
 
             DB::commit();
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return back()->with(
@@ -549,25 +347,16 @@ class PkrsPostController extends Controller
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Hapus file setelah data berhasil dihapus
-        |--------------------------------------------------------------------------
-        */
-
         try {
-
             $files = array_filter(array_merge(
-                [$thumbnail, $videoCover],
+                [$thumbnail, $video, $videoCover],
                 $galleryImages
             ));
 
-            if (!empty($files)) {
-
+            if ($files !== []) {
                 Storage::disk('public')->delete($files);
             }
         } catch (\Throwable $e) {
-
             logger()->warning(
                 'Gagal menghapus file post PKRS: ' . $e->getMessage()
             );
@@ -575,9 +364,6 @@ class PkrsPostController extends Controller
 
         return redirect()
             ->route('admin.pkrs-posts.index')
-            ->with(
-                'success',
-                'Post PKRS berhasil dihapus.'
-            );
+            ->with('success', 'Post PKRS berhasil dihapus.');
     }
 }

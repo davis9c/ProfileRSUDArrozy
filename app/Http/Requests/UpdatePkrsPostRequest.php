@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\PkrsPost;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UpdatePkrsPostRequest extends FormRequest
@@ -12,33 +14,37 @@ class UpdatePkrsPostRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Slug tetap dipertahankan selama judul tidak berubah.
+     */
     protected function prepareForValidation(): void
     {
+        $routePost = $this->route('pkrs_post');
+        $current = $routePost instanceof PkrsPost
+            ? $routePost
+            : ($routePost ? PkrsPost::find($routePost) : null);
+
+        if ($current && $current->title === $this->input('title')) {
+            $slug = $current->slug;
+        } else {
+            $slug = $this->generateUniqueSlug(
+                (string) $this->input('title'),
+                $current?->id
+            );
+        }
+
         $this->merge([
-            'slug' => $this->slug ?: str($this->title)->slug(),
+            'slug' => $slug,
         ]);
     }
 
     public function rules(): array
     {
         return [
-
-            /*
-            |--------------------------------------------------------------------------
-            | Kategori
-            |--------------------------------------------------------------------------
-            */
-
             'pkrs_category_id' => [
                 'required',
                 'exists:pkrs_categories,id',
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Judul
-            |--------------------------------------------------------------------------
-            */
 
             'title' => [
                 'required',
@@ -46,30 +52,13 @@ class UpdatePkrsPostRequest extends FormRequest
                 'max:255',
             ],
 
-            /*
-            |--------------------------------------------------------------------------
-            | Slug
-            |--------------------------------------------------------------------------
-            |
-            | Slug harus unique, tetapi post yang sedang diedit
-            | dikecualikan dari pengecekan unique.
-            |
-            */
-
             'slug' => [
                 'required',
                 'string',
                 'max:255',
-
                 Rule::unique('pkrs_posts', 'slug')
                     ->ignore($this->route('pkrs_post')),
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Excerpt
-            |--------------------------------------------------------------------------
-            */
 
             'excerpt' => [
                 'nullable',
@@ -77,35 +66,17 @@ class UpdatePkrsPostRequest extends FormRequest
                 'max:500',
             ],
 
-            /*
-            |--------------------------------------------------------------------------
-            | Content
-            |--------------------------------------------------------------------------
-            */
-
             'content' => [
-                'nullable',
+                'required',
                 'string',
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Thumbnail
-            |--------------------------------------------------------------------------
-            */
 
             'thumbnail' => [
                 'nullable',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:2048',
+                'max:20480',
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Type
-            |--------------------------------------------------------------------------
-            */
 
             'type' => [
                 'required',
@@ -116,59 +87,29 @@ class UpdatePkrsPostRequest extends FormRequest
                 ]),
             ],
 
-            /*
-            |--------------------------------------------------------------------------
-            | Video
-            |--------------------------------------------------------------------------
-            */
-
             'video' => [
                 'nullable',
-                'url',
-                'max:500',
-                'required_if:type,video',
+                'file',
+                'mimes:mp4,webm,ogg,mov',
+                'max:51200',
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Video Cover
-            |--------------------------------------------------------------------------
-            */
 
             'video_cover' => [
                 'nullable',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:2048',
+                'max:20480',
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Featured
-            |--------------------------------------------------------------------------
-            */
 
             'featured' => [
                 'nullable',
                 'boolean',
             ],
 
-            /*
-            |--------------------------------------------------------------------------
-            | Published
-            |--------------------------------------------------------------------------
-            */
-
             'is_published' => [
                 'nullable',
                 'boolean',
             ],
-
-            /*
-            |--------------------------------------------------------------------------
-            | Published At
-            |--------------------------------------------------------------------------
-            */
 
             'published_at' => [
                 'nullable',
@@ -180,135 +121,71 @@ class UpdatePkrsPostRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'pkrs_category_id.required' => 'Kategori wajib dipilih.',
+            'pkrs_category_id.exists' => 'Kategori tidak ditemukan.',
 
-            /*
-            |--------------------------------------------------------------------------
-            | Category
-            |--------------------------------------------------------------------------
-            */
+            'title.required' => 'Judul post wajib diisi.',
 
-            'pkrs_category_id.required'
-            => 'Kategori wajib dipilih.',
+            'slug.required' => 'Slug wajib diisi.',
+            'slug.unique' => 'Slug sudah digunakan.',
 
-            'pkrs_category_id.exists'
-            => 'Kategori tidak ditemukan.',
+            'excerpt.max' => 'Ringkasan maksimal 500 karakter.',
 
-            /*
-            |--------------------------------------------------------------------------
-            | Title
-            |--------------------------------------------------------------------------
-            */
+            'content.required' => 'Isi artikel wajib diisi.',
 
-            'title.required'
-            => 'Judul post wajib diisi.',
+            'thumbnail.image' => 'Thumbnail harus berupa gambar.',
+            'thumbnail.mimes' => 'Format thumbnail harus JPG, JPEG, PNG, atau WEBP.',
+            'thumbnail.max' => 'Ukuran thumbnail maksimal 20 MB.',
 
-            /*
-            |--------------------------------------------------------------------------
-            | Slug
-            |--------------------------------------------------------------------------
-            */
+            'type.required' => 'Jenis post wajib dipilih.',
 
-            'slug.required'
-            => 'Slug wajib diisi.',
+            'video.required_if' => 'File video wajib diupload jika jenis post adalah Video.',
+            'video.file' => 'Video harus berupa file yang valid.',
+            'video.mimes' => 'Format video harus MP4, WEBM, OGG, atau MOV.',
+            'video.max' => 'Ukuran video maksimal 50 MB.',
 
-            'slug.unique'
-            => 'Slug sudah digunakan.',
+            'video_cover.image' => 'Cover video harus berupa gambar.',
+            'video_cover.mimes' => 'Format cover video harus JPG, JPEG, PNG, atau WEBP.',
+            'video_cover.max' => 'Ukuran cover video maksimal 20 MB.',
 
-            /*
-            |--------------------------------------------------------------------------
-            | Thumbnail
-            |--------------------------------------------------------------------------
-            */
-
-            'thumbnail.image'
-            => 'Thumbnail harus berupa gambar.',
-
-            'thumbnail.max'
-            => 'Ukuran thumbnail maksimal 2 MB.',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Type
-            |--------------------------------------------------------------------------
-            */
-
-            'type.required'
-            => 'Jenis post wajib dipilih.',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Video
-            |--------------------------------------------------------------------------
-            */
-
-            'video.required_if'
-            => 'URL video wajib diisi jika jenis post adalah Video.',
-
-            'video.url'
-            => 'Format URL video tidak valid.',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Video Cover
-            |--------------------------------------------------------------------------
-            */
-
-            'video_cover.image'
-            => 'Cover video harus berupa gambar.',
-
-            'video_cover.max'
-            => 'Ukuran cover maksimal 2 MB.',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Published At
-            |--------------------------------------------------------------------------
-            */
-
-            'published_at.date'
-            => 'Tanggal publish tidak valid.',
+            'published_at.date' => 'Tanggal publish tidak valid.',
         ];
     }
 
     public function attributes(): array
     {
         return [
-
-            'pkrs_category_id'
-            => 'kategori',
-
-            'title'
-            => 'judul',
-
-            'slug'
-            => 'slug',
-
-            'excerpt'
-            => 'ringkasan',
-
-            'content'
-            => 'isi artikel',
-
-            'thumbnail'
-            => 'thumbnail',
-
-            'type'
-            => 'jenis post',
-
-            'video'
-            => 'video',
-
-            'video_cover'
-            => 'cover video',
-
-            'featured'
-            => 'featured',
-
-            'is_published'
-            => 'status publish',
-
-            'published_at'
-            => 'tanggal publish',
+            'pkrs_category_id' => 'kategori',
+            'title' => 'judul',
+            'slug' => 'slug',
+            'excerpt' => 'ringkasan',
+            'content' => 'isi artikel',
+            'thumbnail' => 'thumbnail',
+            'type' => 'jenis post',
+            'video' => 'video',
+            'video_cover' => 'cover video',
+            'featured' => 'featured',
+            'is_published' => 'status publish',
+            'published_at' => 'tanggal publish',
         ];
+    }
+
+    private function generateUniqueSlug(string $title, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($title) ?: 'post';
+        $slug = $base;
+        $counter = 1;
+
+        while (
+            PkrsPost::query()
+                ->where('slug', $slug)
+                ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = $base . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 }

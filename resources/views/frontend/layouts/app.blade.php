@@ -3917,11 +3917,25 @@
                     const source =
                         document.createElement('source');
 
+                    const extension = (
+                        post.video
+                            .split('?')[0]
+                            .split('.')
+                            .pop() || ''
+                    ).toLowerCase();
+
+                    const videoTypes = {
+                        webm: 'video/webm',
+                        ogg: 'video/ogg',
+                        ogv: 'video/ogg',
+                        mov: 'video/quicktime',
+                    };
+
                     source.src =
                         post.video;
 
                     source.type =
-                        'video/mp4';
+                        videoTypes[extension] || 'video/mp4';
 
 
                     video.appendChild(source);

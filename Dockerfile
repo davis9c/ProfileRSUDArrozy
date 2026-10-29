@@ -54,4 +54,4 @@ RUN composer dump-autoload --optimize --no-scripts \
 # Port default 8000. Ubah APP_PORT di .env untuk mengganti port host dan container.
 EXPOSE 8000
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0"]
+CMD ["php", "-d", "upload_max_filesize=64M", "-d", "post_max_size=96M", "artisan", "serve", "--host=0.0.0.0"]

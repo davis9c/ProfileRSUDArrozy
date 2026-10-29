@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class PkrsPost extends Model
 {
@@ -49,5 +50,33 @@ class PkrsPost extends Model
             'pkrs_post_id',
             'id'
         );
+    }
+
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        return $this->fileUrl($this->thumbnail);
+    }
+
+    public function getVideoUrlAttribute(): ?string
+    {
+        return $this->fileUrl($this->video);
+    }
+
+    public function getVideoCoverUrlAttribute(): ?string
+    {
+        return $this->fileUrl($this->video_cover);
+    }
+
+    private function fileUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return Storage::url($path);
     }
 }
