@@ -20,6 +20,13 @@
 /bootstrap/cache/*
 !/bootstrap/cache/.gitignore
 
+# Upload pengguna (postingan berita, PKRS, galeri, video, settings)
+/storage/app/public/*
+!/storage/app/public/.gitignore
+
+# Backup media upload lama
+/public/storage_backup_*
+
 # Log dan file sementara
 *.log
 /nohup.out
