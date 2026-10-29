@@ -1620,6 +1620,8 @@ return [
 
 'id' => $post->id,
 
+'view_url' => route('pkrs.view', ['id' => $post->id]),
+
 'title' => $post->title,
 
 'excerpt' => $post->excerpt ?? '',

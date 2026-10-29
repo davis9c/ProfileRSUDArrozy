@@ -131,4 +131,19 @@ class PkrsController extends Controller
             'title'
         ));
     }
+
+    public function view($id)
+    {
+        $post = PkrsPost::query()
+            ->where('is_published', true)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now())
+            ->findOrFail($id);
+
+        $post->increment('views');
+
+        return response()->json([
+            'views' => $post->views,
+        ]);
+    }
 }

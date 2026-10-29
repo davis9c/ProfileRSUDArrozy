@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- Favicon -->
     <link rel="icon" href="{{ asset('img/logo-pin-edit.png') }}" type="image/x-icon">
     <title>{{ $title }}</title>
@@ -3654,6 +3655,54 @@
 
             let detailGalleryImages = [];
             let detailGalleryIndex = 0;
+            let activePostId = null;
+
+            function formatViews(views) {
+                return new Intl.NumberFormat('id-ID').format(
+                    Number(views) || 0
+                );
+            }
+
+            async function recordPostView(post) {
+                if (!post.view_url) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(post.view_url, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document
+                                .querySelector('meta[name="csrf-token"]')
+                                ?.getAttribute('content') || '',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Gagal mencatat jumlah dilihat.');
+                    }
+
+                    const result = await response.json();
+                    const views = Number(result.views);
+
+                    if (!Number.isFinite(views)) {
+                        throw new Error('Respons jumlah dilihat tidak valid.');
+                    }
+
+                    post.views = Math.max(Number(post.views) || 0, views);
+
+                    if (activePostId === String(post.id)) {
+                        const detail = getDetailElements();
+
+                        if (detail.views) {
+                            detail.views.textContent = formatViews(post.views);
+                        }
+                    }
+                } catch (error) {
+                    console.error('PKRS: Gagal memperbarui jumlah dilihat.', error);
+                }
+            }
 
 
             /*
@@ -3707,7 +3756,7 @@
 
 
                 detail.views.textContent =
-                    post.views || '0';
+                    formatViews(post.views);
 
 
                 detail.date.textContent =
@@ -3720,7 +3769,7 @@
 
 
                 renderDetailMedia(post);
-
+                activePostId = String(post.id);
 
                 detail.overlay.classList.add('is-open');
 
@@ -3731,6 +3780,7 @@
 
 
                 lockBody();
+                recordPostView(post);
             }
 
 
@@ -4081,6 +4131,7 @@
                 detailGalleryImages = [];
 
                 detailGalleryIndex = 0;
+                activePostId = null;
 
 
                 unlockBody();
