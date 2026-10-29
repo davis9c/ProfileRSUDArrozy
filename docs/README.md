@@ -28,7 +28,8 @@ Catatan:
 - `APP_PORT` adalah port aplikasi. `APP_URL` dan `SERVER_PORT` mengikuti nilai ini, jadi cukup ubah `APP_PORT`.
 - Jika port diubah, jalankan `php artisan optimize:clear` atau restart server agar konfigurasi baru dipakai.
 - `127.0.0.1` adalah localhost melalui TCP. Ini lebih aman daripada hostname `localhost` karena PHP dapat mencoba Unix socket yang tidak tersedia ketika MySQL berjalan di container.
-- Untuk aplikasi yang berjalan di Docker sedangkan MySQL berada di host, gunakan `DB_HOST=host.docker.internal`.
+- Untuk aplikasi Docker, `docker-compose.yaml` memakai `network_mode: host`, sehingga `DB_HOST=127.0.0.1` dapat digunakan untuk MySQL di host maupun MySQL di container lain yang mem-publish port `3306` ke host.
+- Jika database berada di server lain, ganti `DB_HOST` dengan IP database tersebut (misalnya `10.0.0.212`).
 - Ganti password default sebelum digunakan di production.
 
 ## Kredensial Admin Default
@@ -68,7 +69,8 @@ Langkah lengkap, termasuk pembuatan database dan kategori PKRS, ada di [installa
 
 ```bash
 cp .env.example .env
-# ubah DB_HOST menjadi host.docker.internal
+# DB_HOST=127.0.0.1 (default) untuk MySQL di host/container yang publish port 3306,
+# atau ganti dengan IP database jika MySQL berada di server lain.
 docker compose up -d --build
 docker compose exec rsud php artisan key:generate
 docker compose exec rsud php artisan migrate --seed
@@ -81,7 +83,7 @@ Langkah lengkap ada di [installation-docker.md](installation-docker.md).
 ## Catatan Penting
 
 - Project ini menggunakan MySQL, bukan SQLite.
-- Port aplikasi dikonfigurasi melalui `APP_PORT` di `.env`. Docker Compose memakai nilai yang sama untuk port host dan container.
+- Port aplikasi dikonfigurasi melalui `APP_PORT` di `.env`. Docker Compose memakai host networking, sehingga aplikasi langsung listen di port tersebut pada host.
 - Asset frontend hasil build sudah tersedia di `public/build`. Node.js hanya diperlukan jika Anda mengubah CSS/JavaScript lalu menjalankan `npm run build` atau `npm run dev`.
 - Data dari seeder adalah data demo. Seeder bawaan belum membuat kategori PKRS; ikuti langkah tambahan di panduan instalasi.
 - File `.env` tidak boleh di-commit. Gunakan `.env.example` sebagai template.

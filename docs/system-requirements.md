@@ -84,7 +84,7 @@ APP_URL=http://localhost:${APP_PORT}
 SERVER_PORT="${APP_PORT}"
 ```
 
-`APP_PORT` adalah nilai utama. `APP_URL` dan `SERVER_PORT` mengikuti nilai tersebut, sehingga cukup ubah `APP_PORT` jika port `8000` sudah dipakai. Untuk Docker, `docker-compose.yaml` memetakan `APP_PORT` ke port container yang sama.
+`APP_PORT` adalah nilai utama. `APP_URL` dan `SERVER_PORT` mengikuti nilai tersebut, sehingga cukup ubah `APP_PORT` jika port `8000` sudah dipakai. Untuk Docker, `docker-compose.yaml` memakai `network_mode: host`, sehingga aplikasi langsung listen di `APP_PORT` pada host.
 
 ## Kebutuhan Database
 
@@ -99,13 +99,13 @@ DB_USERNAME=profile
 DB_PASSWORD=profile123
 ```
 
-Untuk instalasi Docker, MySQL dijalankan secara eksternal (di host atau container terpisah). Konfigurasi `DB_HOST` pada mode Docker menggunakan `host.docker.internal`.
+Untuk instalasi Docker, MySQL dijalankan secara eksternal (di host atau container terpisah). Docker Compose memakai host networking, sehingga `DB_HOST=127.0.0.1` dapat digunakan untuk MySQL di host maupun MySQL di container lain yang mem-publish port `3306` ke host. Jika database berada di server lain, gunakan IP database tersebut.
 
 ## Kebutuhan Jaringan
 
 - Aplikasi diakses melalui `http://localhost:${APP_PORT}`. Dengan nilai default, alamatnya `http://localhost:8000`.
 - MySQL harus dapat diakses dari aplikasi.
-- Jika aplikasi berjalan di Docker dan MySQL berjalan native di host Linux, pastikan MySQL mendengarkan koneksi dari container. Jika MySQL hanya bind ke `127.0.0.1`, container tidak dapat terhubung. Gunakan `bind-address = 0.0.0.0` atau jalankan MySQL di container terpisah dengan port `3306` dipublikasikan.
+- Jika aplikasi berjalan di Docker dan MySQL berjalan native di host Linux, aplikasi memakai host networking sehingga MySQL cukup mendengarkan `127.0.0.1`. Jika MySQL berjalan di container terpisah, publikasikan port `3306` ke host (misalnya `-p 127.0.0.1:3306:3306`).
 - Jika memakai CDN untuk font/icon (Google Fonts, Font Awesome, Swiper), koneksi internet diperlukan agar tampilan ikon dan font sempurna. Aplikasi tetap dapat berjalan tanpa CDN tersebut.
 
 ## Catatan Produksi

@@ -59,41 +59,125 @@ class NewsController extends Controller
 
     private function buildContentBlocks(string $content, $images): array
     {
-        preg_match_all('/<p[^>]*>.*?<\/p>/is', $content, $matches);
-        $paragraphs = $matches[0];
+        $content = trim($content);
 
-        if (empty($paragraphs)) {
-            $paragraphs = [$content];
+        if ($content === '') {
+            return [];
+        }
+
+        /*
+         * Tanpa foto tambahan, tampilkan seluruh HTML apa adanya.
+         * Jangan memfilter hanya tag <p>, karena heading, list,
+         * blockquote, dan elemen block lainnya juga harus ikut tampil.
+         */
+        if ($images->isEmpty()) {
+            return [
+                ['type' => 'html', 'value' => $content],
+            ];
+        }
+
+        $htmlBlocks = $this->splitContentIntoBlocks($content);
+        $totalBlocks = count($htmlBlocks);
+
+        if ($totalBlocks === 0) {
+            $htmlBlocks = [$content];
+            $totalBlocks = 1;
+        }
+
+        $totalImages = $images->count();
+        $step = max(1, intdiv($totalBlocks, $totalImages + 1));
+
+        $insertAfter = [];
+        for ($i = 1; $i <= $totalImages; $i++) {
+            $insertAfter[min($totalBlocks, $step * $i)] = true;
         }
 
         $blocks = [];
-
-        if ($images->isEmpty()) {
-            $blocks[] = ['type' => 'html', 'value' => implode('', $paragraphs)];
-            return $blocks;
-        }
-
-        $totalParagraphs = count($paragraphs);
-        $totalImages = $images->count();
-
-        $step = max(1, intdiv($totalParagraphs, $totalImages + 1));
-        $insertAfter = [];
-        for ($i = 1; $i <= $totalImages; $i++) {
-            $insertAfter[] = min($totalParagraphs, $step * $i);
-        }
-
         $imageIndex = 0;
-        foreach ($paragraphs as $i => $paragraph) {
-            $blocks[] = ['type' => 'html', 'value' => $paragraph];
 
-            $currentPosition = $i + 1;
-            if (in_array($currentPosition, $insertAfter) && $imageIndex < $totalImages) {
+        foreach ($htmlBlocks as $index => $htmlBlock) {
+            $blocks[] = ['type' => 'html', 'value' => $htmlBlock];
+
+            $currentPosition = $index + 1;
+
+            if (isset($insertAfter[$currentPosition]) && $imageIndex < $totalImages) {
                 $blocks[] = ['type' => 'image', 'value' => $images[$imageIndex]];
                 $imageIndex++;
             }
         }
 
+        /*
+         * Jika jumlah foto lebih banyak daripada jumlah blok,
+         * sisipkan sisanya di akhir agar tidak ada foto yang hilang.
+         */
+        while ($imageIndex < $totalImages) {
+            $blocks[] = ['type' => 'image', 'value' => $images[$imageIndex]];
+            $imageIndex++;
+        }
+
         return $blocks;
+    }
+
+    /**
+     * Pecah HTML menjadi blok-blok top-level (p, heading, list, dll).
+     */
+    private function splitContentIntoBlocks(string $content): array
+    {
+        $previousUseErrors = libxml_use_internal_errors(true);
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+
+        $loaded = $dom->loadHTML(
+            '<?xml encoding="UTF-8"><div id="__news_content_root">' . $content . '</div>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+        );
+
+        libxml_clear_errors();
+        libxml_use_internal_errors($previousUseErrors);
+
+        if (!$loaded) {
+            return [$content];
+        }
+
+        $root = null;
+
+        foreach ($dom->getElementsByTagName('div') as $div) {
+            if ($div->getAttribute('id') === '__news_content_root') {
+                $root = $div;
+                break;
+            }
+        }
+
+        if (!$root) {
+            return [$content];
+        }
+
+        $blocks = [];
+
+        foreach ($root->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE && trim($child->nodeValue) === '') {
+                continue;
+            }
+
+            if ($child->nodeType === XML_COMMENT_NODE) {
+                continue;
+            }
+
+            if (
+                $child->nodeType === XML_ELEMENT_NODE
+                && in_array(strtolower($child->nodeName), ['script', 'style'], true)
+            ) {
+                continue;
+            }
+
+            $html = $dom->saveHTML($child);
+
+            if ($html !== false && trim($html) !== '') {
+                $blocks[] = trim($html);
+            }
+        }
+
+        return $blocks ?: [$content];
     }
 
     // ============ ADMIN CRUD (baru) ============

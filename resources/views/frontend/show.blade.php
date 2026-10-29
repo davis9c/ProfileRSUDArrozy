@@ -24,19 +24,52 @@
         color: #475569;
     }
 
+    .rz-news-detail-scope .news-content h1,
     .rz-news-detail-scope .news-content h2,
-    .rz-news-detail-scope .news-content h3 {
+    .rz-news-detail-scope .news-content h3,
+    .rz-news-detail-scope .news-content h4,
+    .rz-news-detail-scope .news-content h5,
+    .rz-news-detail-scope .news-content h6 {
         font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
         color: #0f172a;
         margin: 1.75rem 0 0.75rem;
         font-weight: 700;
+        line-height: 1.35;
     }
 
     .rz-news-detail-scope .news-content ul,
     .rz-news-detail-scope .news-content ol {
-        margin: 0 0 1.25rem 1.25rem;
+        margin: 0 0 1.25rem;
+        padding-left: 1.5rem;
         color: #475569;
         line-height: 1.9;
+    }
+
+    .rz-news-detail-scope .news-content ul {
+        list-style: disc outside;
+    }
+
+    .rz-news-detail-scope .news-content ol {
+        list-style: decimal outside;
+    }
+
+    .rz-news-detail-scope .news-content li {
+        margin-bottom: 0.35rem;
+        padding-left: 0.15rem;
+    }
+
+    .rz-news-detail-scope .news-content ul ul {
+        list-style-type: circle;
+    }
+
+    .rz-news-detail-scope .news-content ol ol {
+        list-style-type: lower-alpha;
+    }
+
+    .rz-news-detail-scope .news-content li > ul,
+    .rz-news-detail-scope .news-content li > ol {
+        margin-top: 0.35rem;
+        margin-bottom: 0;
     }
 </style>
 

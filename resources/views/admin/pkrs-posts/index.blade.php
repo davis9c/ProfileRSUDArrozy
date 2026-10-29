@@ -186,6 +186,127 @@
 
     }
 
+    .pkrs-category-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        flex-shrink: 0;
+
+        padding: 5px 10px;
+
+        border-radius: 999px;
+
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .status-badge.is-published {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #059669;
+    }
+
+    .status-badge.is-hidden {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+    }
+
+    .publish-switch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        margin: 0;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .publish-switch input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .publish-switch .switch-track {
+        position: relative;
+
+        width: 42px;
+        height: 24px;
+
+        border-radius: 999px;
+        background: #cbd5e1;
+
+        transition: background .25s ease;
+    }
+
+    .publish-switch .switch-track::after {
+        content: '';
+
+        position: absolute;
+        top: 3px;
+        left: 3px;
+
+        width: 18px;
+        height: 18px;
+
+        border-radius: 50%;
+        background: white;
+
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+
+        transition: transform .25s ease;
+    }
+
+    .publish-switch input:checked+.switch-track {
+        background: #10b981;
+    }
+
+    .publish-switch input:checked+.switch-track::after {
+        transform: translateX(18px);
+    }
+
+    .publish-switch input:focus-visible+.switch-track {
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, .25);
+    }
+
+    .publish-switch.is-loading {
+        opacity: .55;
+        pointer-events: none;
+    }
+
+    .action-btn-danger {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+        transition: all .2s ease;
+    }
+
+    .action-btn-danger:hover {
+        background: #fee2e2;
+        border-color: #fca5a5;
+        color: #b91c1c;
+        transform: translateY(-2px);
+    }
+
+    .pkrs-post-card.is-hidden-post .pkrs-image {
+        opacity: .55;
+        filter: grayscale(.6);
+    }
+
+    .pkrs-post-card.is-hidden-post .pkrs-title {
+        color: #94a3b8;
+    }
+
     @media(max-width:992px) {
 
         .pkrs-grid {
@@ -228,7 +349,10 @@
         </div>
         <div class="pkrs-grid">
             @forelse($posts as $post)
-            <div class="pkrs-post-card">
+            <div @class([
+                'pkrs-post-card',
+                'is-hidden-post' => ! $post->is_published,
+            ])>
                 <div class="pkrs-image">
                     @if($post->thumbnail)
                     <img src="{{ asset('storage/'.$post->thumbnail) }}"
@@ -240,8 +364,22 @@
                     @endif
                 </div>
                 <div class="pkrs-body">
-                    <div class="pkrs-category">
-                        {{ $post->category?->name ?? 'Tanpa kategori' }}
+                    <div class="pkrs-category-row">
+                        <div class="pkrs-category">
+                            {{ $post->category?->name ?? 'Tanpa kategori' }}
+                        </div>
+                        <span @class([
+                            'status-badge',
+                            'is-published' => $post->is_published,
+                            'is-hidden' => ! $post->is_published,
+                        ])>
+                            <i @class([
+                                'bi',
+                                'bi-check-circle-fill' => $post->is_published,
+                                'bi-eye-slash-fill' => ! $post->is_published,
+                            ])></i>
+                            <span>{{ $post->is_published ? 'Tayang' : 'Disembunyikan' }}</span>
+                        </span>
                     </div>
                     <h5 class="pkrs-title">
                         {{ $post->title }}
@@ -250,7 +388,7 @@
                         {{ Str::limit($post->excerpt,80) }}
                     </p>
                     <div class="pkrs-footer">
-                        <div>
+                        <div style="display:flex;align-items:center;gap:10px;">
                             @if($post->type=='gallery')
                             <span class="badge bg-success">
                                 <i class="bi bi-images"></i>
@@ -267,6 +405,18 @@
                                 Image
                             </span>
                             @endif
+
+                            <label class="publish-switch"
+                                title="{{ $post->is_published ? 'Sembunyikan post' : 'Tayangkan post' }}">
+                                <input
+                                    type="checkbox"
+                                    class="toggle-publish"
+                                    role="switch"
+                                    data-url="{{ route('admin.pkrs-posts.toggle-publish', ['pkrsPost' => $post->id]) }}"
+                                    aria-label="{{ $post->is_published ? 'Sembunyikan post' : 'Tayangkan post' }}"
+                                    @checked($post->is_published)>
+                                <span class="switch-track"></span>
+                            </label>
                         </div>
                         <div class="pkrs-actions">
 
@@ -343,6 +493,16 @@
 
                             @endif
 
+                            {{-- Delete --}}
+                            <button
+                                type="button"
+                                class="action-btn action-btn-danger btn-delete"
+                                data-title="{{ $post->title }}"
+                                data-action="{{ route('admin.pkrs-posts.destroy', ['pkrs_post' => $post->id]) }}"
+                                title="Hapus">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+
                         </div>
                     </div>
                 </div>
@@ -398,6 +558,218 @@
         </div>
     </div>
 </div>
+
+<!-- ================= DELETE CONFIRMATION ================= -->
+
+<div id="deleteOverlay" class="delete-overlay">
+    <div class="delete-modal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+        <div class="delete-icon">
+            <i class="bi bi-trash3"></i>
+        </div>
+        <h5 id="deleteModalTitle">Hapus Post PKRS?</h5>
+        <p>Post berikut akan dihapus permanen beserta thumbnail, video cover, dan seluruh gambar gallery-nya.</p>
+        <strong class="delete-post-title" id="deletePostTitle">-</strong>
+        <p class="delete-warning">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            Tindakan ini tidak dapat dibatalkan.
+        </p>
+        <form id="deleteForm" method="POST" action="#">
+            @csrf
+            @method('DELETE')
+            <div class="delete-actions">
+                <button type="button" class="btn-cancel" id="cancelDelete">Batal</button>
+                <button type="submit" class="btn-confirm" id="confirmDelete">Ya, Hapus</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="pkrsToast" class="toast-notice" role="status" aria-live="polite">
+    <i class="bi bi-check-circle-fill" id="pkrsToastIcon"></i>
+    <span id="pkrsToastMessage"></span>
+</div>
+
+<style>
+    .delete-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        padding: 20px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        background: rgba(15, 23, 42, .75);
+        backdrop-filter: blur(8px);
+
+        opacity: 0;
+        visibility: hidden;
+        transition: .25s ease;
+    }
+
+    .delete-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .delete-modal {
+        width: min(460px, 100%);
+        padding: 30px;
+
+        background: white;
+        border-radius: 22px;
+
+        transform: scale(.92);
+        transition: .25s ease;
+        box-shadow: 0 40px 80px rgba(0, 0, 0, .3);
+    }
+
+    .delete-overlay.show .delete-modal {
+        transform: scale(1);
+    }
+
+    .delete-icon {
+        width: 62px;
+        height: 62px;
+        margin: 0 auto 18px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border-radius: 50%;
+
+        background: #fef2f2;
+        color: #dc2626;
+        font-size: 26px;
+    }
+
+    .delete-modal h5 {
+        margin: 0;
+        text-align: center;
+
+        color: #111827;
+        font-size: 21px;
+        font-weight: 700;
+    }
+
+    .delete-modal p {
+        margin: 10px 0 0;
+
+        text-align: center;
+        color: #6b7280;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .delete-post-title {
+        display: block;
+        margin: 16px 0;
+
+        padding: 11px 14px;
+
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+
+        text-align: center;
+        color: #111827;
+        font-size: 14px;
+        word-break: break-word;
+    }
+
+    .delete-modal .delete-warning {
+        margin-bottom: 22px;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .delete-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .delete-actions .btn-cancel,
+    .delete-actions .btn-confirm {
+        flex: 1;
+
+        padding: 11px 16px;
+
+        border-radius: 12px;
+
+        font-size: 14px;
+        font-weight: 600;
+
+        transition: .2s ease;
+    }
+
+    .delete-actions .btn-cancel {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+    }
+
+    .delete-actions .btn-cancel:hover {
+        background: #f1f5f9;
+    }
+
+    .delete-actions .btn-confirm {
+        background: #dc2626;
+        border: 1px solid #dc2626;
+        color: white;
+    }
+
+    .delete-actions .btn-confirm:hover {
+        background: #b91c1c;
+        border-color: #b91c1c;
+    }
+
+    .delete-actions .btn-confirm:disabled {
+        opacity: .65;
+        cursor: not-allowed;
+    }
+
+    .toast-notice {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 1000000;
+
+        display: flex;
+        align-items: center;
+        gap: 10px;
+
+        max-width: min(380px, calc(100vw - 48px));
+        padding: 14px 18px;
+
+        border-radius: 14px;
+
+        background: #065f46;
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+
+        box-shadow: 0 20px 40px rgba(0, 0, 0, .25);
+
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(14px);
+        transition: .25s ease;
+    }
+
+    .toast-notice.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .toast-notice.is-error {
+        background: #991b1b;
+    }
+</style>
+
 <style>
     .preview-overlay {
 
@@ -527,6 +899,58 @@
 
         color: #374151;
 
+        overflow-wrap: anywhere;
+
+    }
+
+    .preview-content p {
+        margin: 0 0 1rem;
+    }
+
+    .preview-content h1,
+    .preview-content h2,
+    .preview-content h3,
+    .preview-content h4,
+    .preview-content h5,
+    .preview-content h6 {
+        margin: 1.35rem 0 0.65rem;
+
+        color: #111827;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    .preview-content ul,
+    .preview-content ol {
+        margin: 0 0 1rem;
+        padding-left: 1.5rem;
+    }
+
+    .preview-content ul {
+        list-style: disc outside;
+    }
+
+    .preview-content ol {
+        list-style: decimal outside;
+    }
+
+    .preview-content li {
+        margin-bottom: 0.35rem;
+        padding-left: 0.15rem;
+    }
+
+    .preview-content ul ul {
+        list-style-type: circle;
+    }
+
+    .preview-content ol ol {
+        list-style-type: lower-alpha;
+    }
+
+    .preview-content li > ul,
+    .preview-content li > ol {
+        margin-top: 0.35rem;
+        margin-bottom: 0;
     }
 
     .preview-info {
@@ -681,9 +1105,162 @@
         }
     });
 
+    /*
+    |--------------------------------------------------------------------------
+    | Delete confirmation
+    |--------------------------------------------------------------------------
+    */
+
+    const deleteOverlay = document.getElementById('deleteOverlay');
+    const deleteForm = document.getElementById('deleteForm');
+    const deletePostTitle = document.getElementById('deletePostTitle');
+    const cancelDelete = document.getElementById('cancelDelete');
+    const confirmDelete = document.getElementById('confirmDelete');
+
+    let deleteTrigger = null;
+
+    function closeDeleteModal() {
+        deleteOverlay.classList.remove('show');
+
+        confirmDelete.disabled = false;
+        confirmDelete.textContent = 'Ya, Hapus';
+
+        if (deleteTrigger) {
+            deleteTrigger.focus();
+            deleteTrigger = null;
+        }
+    }
+
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', function() {
+            deleteTrigger = this;
+            deleteForm.action = this.dataset.action;
+            deletePostTitle.textContent = this.dataset.title;
+            deleteOverlay.classList.add('show');
+            cancelDelete.focus();
+        });
+    });
+
+    cancelDelete.addEventListener('click', closeDeleteModal);
+
+    deleteOverlay.addEventListener('click', function(e) {
+        if (e.target === deleteOverlay) {
+            closeDeleteModal();
+        }
+    });
+
+    deleteForm.addEventListener('submit', function() {
+        confirmDelete.disabled = true;
+        confirmDelete.textContent = 'Menghapus...';
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Publish toggle
+    |--------------------------------------------------------------------------
+    */
+
+    const toast = document.getElementById('pkrsToast');
+    const toastMessage = document.getElementById('pkrsToastMessage');
+    const toastIcon = document.getElementById('pkrsToastIcon');
+
+    let toastTimer = null;
+
+    function showToast(message, type = 'success') {
+        clearTimeout(toastTimer);
+
+        toast.classList.toggle('is-error', type === 'error');
+
+        toastIcon.className = type === 'error'
+            ? 'bi bi-exclamation-circle-fill'
+            : 'bi bi-check-circle-fill';
+
+        toastMessage.textContent = message;
+        toast.classList.add('show');
+
+        toastTimer = setTimeout(function() {
+            toast.classList.remove('show');
+        }, 3500);
+    }
+
+    function updatePublishUi(card, isPublished) {
+        const wrapper = card.querySelector('.publish-switch');
+        const badge = card.querySelector('.status-badge');
+        const toggle = card.querySelector('.toggle-publish');
+
+        card.classList.toggle('is-hidden-post', !isPublished);
+
+        if (toggle) {
+            toggle.checked = isPublished;
+            toggle.setAttribute(
+                'aria-label',
+                isPublished ? 'Sembunyikan post' : 'Tayangkan post'
+            );
+        }
+
+        if (wrapper) {
+            wrapper.title = isPublished ? 'Sembunyikan post' : 'Tayangkan post';
+        }
+
+        if (badge) {
+            badge.classList.toggle('is-published', isPublished);
+            badge.classList.toggle('is-hidden', !isPublished);
+
+            badge.innerHTML = `
+                <i class="bi ${isPublished ? 'bi-check-circle-fill' : 'bi-eye-slash-fill'}"></i>
+                <span>${isPublished ? 'Tayang' : 'Disembunyikan'}</span>
+            `;
+        }
+    }
+
+    document.querySelectorAll('.toggle-publish').forEach(toggle => {
+        toggle.addEventListener('change', async function() {
+            const card = this.closest('.pkrs-post-card');
+            const wrapper = this.closest('.publish-switch');
+            const previousState = !this.checked;
+
+            wrapper.classList.add('is-loading');
+            this.disabled = true;
+
+            try {
+                const response = await fetch(this.dataset.url, {
+                    method: 'PATCH',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({}),
+                });
+
+                let data = {};
+
+                try {
+                    data = await response.json();
+                } catch (error) {
+                    data = {};
+                }
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Gagal mengubah status post.');
+                }
+
+                updatePublishUi(card, data.is_published);
+                showToast(data.message, 'success');
+            } catch (error) {
+                this.checked = previousState;
+                showToast(error.message, 'error');
+            } finally {
+                this.disabled = false;
+                wrapper.classList.remove('is-loading');
+            }
+        });
+    });
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             overlay.classList.remove('show');
+            closeDeleteModal();
         }
     });
 </script>

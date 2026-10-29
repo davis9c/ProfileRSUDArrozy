@@ -484,10 +484,100 @@ class PkrsPostController extends Controller
 
 
     /**
+     * Toggle post publish status.
+     */
+    public function togglePublish(PkrsPost $pkrsPost)
+    {
+        try {
+
+            $pkrsPost->is_published = ! $pkrsPost->is_published;
+
+            if ($pkrsPost->is_published && empty($pkrsPost->published_at)) {
+
+                $pkrsPost->published_at = now();
+            }
+
+            $pkrsPost->save();
+
+            return response()->json([
+                'success'      => true,
+                'is_published' => $pkrsPost->is_published,
+                'published_at' => optional($pkrsPost->published_at)->format('d M Y H:i'),
+                'message'      => $pkrsPost->is_published
+                    ? 'Post berhasil ditayangkan.'
+                    : 'Post berhasil disembunyikan sementara.',
+            ]);
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
      * Delete post.
      */
     public function destroy(PkrsPost $pkrsPost)
     {
-        //
+        DB::beginTransaction();
+
+        try {
+
+            $thumbnail = $pkrsPost->thumbnail;
+            $videoCover = $pkrsPost->video_cover;
+
+            $galleryImages = $pkrsPost
+                ->galleries()
+                ->pluck('image')
+                ->all();
+
+            $pkrsPost->galleries()->delete();
+
+            $pkrsPost->delete();
+
+            DB::commit();
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return back()->with(
+                'error',
+                'Gagal menghapus post: ' . $e->getMessage()
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Hapus file setelah data berhasil dihapus
+        |--------------------------------------------------------------------------
+        */
+
+        try {
+
+            $files = array_filter(array_merge(
+                [$thumbnail, $videoCover],
+                $galleryImages
+            ));
+
+            if (!empty($files)) {
+
+                Storage::disk('public')->delete($files);
+            }
+        } catch (\Throwable $e) {
+
+            logger()->warning(
+                'Gagal menghapus file post PKRS: ' . $e->getMessage()
+            );
+        }
+
+        return redirect()
+            ->route('admin.pkrs-posts.index')
+            ->with(
+                'success',
+                'Post PKRS berhasil dihapus.'
+            );
     }
 }

@@ -609,6 +609,13 @@
                 </div>
                 @endif
 
+                @if (session('error'))
+                <div class="mb-6 p-4 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400"
+                    x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)">
+                    {{ session('error') }}
+                </div>
+                @endif
+
                 @if ($errors->any())
                 <div class="mb-6 p-4 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400">
                     <ul class="list-disc list-inside">

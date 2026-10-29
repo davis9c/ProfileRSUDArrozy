@@ -12,26 +12,6 @@ class PkrsController extends Controller
     {
         /*
         |--------------------------------------------------------------------------
-        | FEATURED
-        |--------------------------------------------------------------------------
-        */
-        $featured = PkrsPost::query()
-            ->with([
-                'category',
-                'galleries' => function ($query) {
-                    $query->orderBy('sort_order');
-                },
-            ])
-            ->where('is_published', true)
-            ->where('featured', true)
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->latest('published_at')
-            ->first();
-
-
-        /*
-        |--------------------------------------------------------------------------
         | POSTS UNTUK HALAMAN / PAGINATION
         |--------------------------------------------------------------------------
         */
@@ -76,7 +56,6 @@ class PkrsController extends Controller
 
 
         return view('frontend.pkrs', compact(
-            'featured',
             'posts',
             'allPosts',
             'title'
@@ -142,33 +121,12 @@ class PkrsController extends Controller
             ->get();
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | FEATURED
-        |--------------------------------------------------------------------------
-        */
-        $featured = PkrsPost::query()
-            ->with([
-                'category',
-                'galleries' => function ($query) {
-                    $query->orderBy('sort_order');
-                },
-            ])
-            ->where('is_published', true)
-            ->where('featured', true)
-            ->whereNotNull('published_at')
-            ->where('published_at', '<=', now())
-            ->latest('published_at')
-            ->first();
-
-
         $title = 'PKRS - RSUD Ar Rozy';
 
 
         return view('frontend.pkrs', compact(
             'posts',
             'allPosts',
-            'featured',
             'post',
             'title'
         ));

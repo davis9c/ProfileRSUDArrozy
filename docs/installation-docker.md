@@ -4,11 +4,11 @@ Panduan ini menjalankan aplikasi Laravel di Docker, sedangkan MySQL dijalankan s
 
 ## 1. Prasyarat
 
-- Docker Engine 24+
-- Docker Compose v2
+- Docker Engine 24+ dengan dukungan host networking (Linux), atau Docker Desktop yang host networking-nya aktif
+- Docker Compose v2.24+ (untuk sintaks override bila diperlukan)
 - MySQL 8.0+ yang dapat diakses dari container aplikasi
 - Port `APP_PORT` (default `8000`) tersedia di host
-- Port `3306` MySQL tersedia jika MySQL berjalan di host
+- Port `3306` MySQL dipublikasikan ke host jika MySQL berjalan di container
 
 Verifikasi:
 
@@ -47,19 +47,9 @@ FLUSH PRIVILEGES;
 EXIT;
 ```
 
-Penting: container aplikasi akan menghubungi MySQL melalui `host.docker.internal`. Jika MySQL hanya mendengarkan `127.0.0.1`, container tidak dapat terhubung. Ubah konfigurasi MySQL (misalnya `/etc/mysql/mysql.conf.d/mysqld.cnf`) menjadi:
+Karena aplikasi memakai `network_mode: host`, container berbagi network dengan host. MySQL native cukup mendengarkan `127.0.0.1` (konfigurasi default) dan tidak perlu diubah menjadi `0.0.0.0`. Pastikan tidak ada service lain yang memakai port `3306`.
 
-```ini
-bind-address = 0.0.0.0
-```
-
-Lalu restart MySQL:
-
-```bash
-sudo systemctl restart mysql
-```
-
-Untuk penggunaan lokal, pastikan port `3306` hanya dapat diakses dari mesin sendiri atau gunakan firewall.
+Untuk penggunaan lokal, port `3306` sebaiknya hanya dapat diakses dari mesin sendiri atau gunakan firewall.
 
 ### Opsi B - MySQL di Container Terpisah
 
@@ -73,7 +63,7 @@ docker run -d \
   -e MYSQL_USER=profile \
   -e MYSQL_PASSWORD=profile123 \
   -e MYSQL_ROOT_PASSWORD=root \
-  -p 3306:3306 \
+  -p 127.0.0.1:3306:3306 \
   -v rsud_mysql_data:/var/lib/mysql \
   mysql:8.4
 ```
@@ -103,21 +93,28 @@ APP_URL=http://localhost:${APP_PORT}
 SERVER_PORT="${APP_PORT}"
 
 DB_CONNECTION=mysql
-DB_HOST=host.docker.internal
+DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=db_ar_profile
 DB_USERNAME=profile
 DB_PASSWORD=profile123
 ```
 
-`APP_PORT` menentukan port host dan port container. `APP_URL` serta `SERVER_PORT` mengikuti nilai tersebut, jadi cukup ubah `APP_PORT` jika port `8000` sudah dipakai. `docker-compose.yaml` memetakan port dengan `${APP_PORT:-8000}`.
+`docker-compose.yaml` memakai `network_mode: host`, sehingga container aplikasi berbagi network dengan host. Artinya:
 
-`host.docker.internal` sudah didukung oleh `extra_hosts` di `docker-compose.yaml`:
+- `DB_HOST=127.0.0.1` dapat dipakai untuk MySQL native di host **atau** MySQL di container lain yang mem-publish port `3306` ke host.
+- Gunakan `127.0.0.1`, bukan `localhost`, agar PHP memakai koneksi TCP dan tidak mencoba Unix socket yang tidak tersedia di container.
 
-```yaml
-extra_hosts:
-  - "host.docker.internal:host-gateway"
+Jika database berada di server lain, cukup ganti `DB_HOST` dengan IP database tersebut:
+
+```env
+DB_HOST=10.0.0.212
+DB_PORT=3306
 ```
+
+`APP_PORT` adalah port tempat aplikasi listen langsung di host (tidak ada port mapping). `APP_URL` serta `SERVER_PORT` mengikuti nilai tersebut, jadi cukup ubah `APP_PORT` jika port `8000` sudah dipakai.
+
+Jika host networking tidak tersedia di server, gunakan mode bridge sebagai fallback: hapus `network_mode: host`, tambahkan kembali port mapping dan `extra_hosts`, lalu set `DB_HOST=host.docker.internal` (MySQL di host) atau `DB_HOST=<nama-container>` dengan network bersama (MySQL di container).
 
 Catatan: container membaca konfigurasi dari file `.env` yang di-mount ke `/var/www/html/.env`. Jika Anda mengubah `.env`, jalankan ulang container agar perubahan diterapkan:
 
@@ -283,15 +280,15 @@ Sesuaikan kredensial jika MySQL bukan container `rsud-mysql`.
 
 ## Troubleshooting
 
-### `SQLSTATE[HY000] [2002] Connection refused`
+### `SQLSTATE[HY000] [2002] Connection refused` atau `No such file or directory`
 
-- Pastikan MySQL berjalan dan port `3306` terbuka.
-- Pastikan `DB_HOST=host.docker.internal`, bukan `127.0.0.1` (di dalam container, `127.0.0.1` adalah container itu sendiri).
-- Jika MySQL native hanya bind ke `127.0.0.1`, ubah `bind-address` menjadi `0.0.0.0`.
+- Pastikan MySQL berjalan dan port `3306` terbuka atau dipublikasikan ke host.
+- Pastikan `DB_HOST=127.0.0.1` (TCP), bukan `localhost`. Hostname `localhost` membuat PHP mencoba Unix socket yang tidak tersedia di container.
+- Pastikan `docker-compose.yaml` memakai `network_mode: host` dan host networking aktif di Docker/Linux/Docker Desktop.
 - Cek koneksi dari container:
 
 ```bash
-docker compose exec rsud mysql -h host.docker.internal -u profile -pprofile123 -e "SELECT 1;"
+docker compose exec rsud mysql -h 127.0.0.1 -u profile -pprofile123 -e "SELECT 1;"
 ```
 
 ### `Access denied for user 'profile'@'...'`
@@ -299,9 +296,13 @@ docker compose exec rsud mysql -h host.docker.internal -u profile -pprofile123 -
 - Pastikan user MySQL memakai host `%` atau host yang sesuai dengan asal koneksi container.
 - Pastikan password di `.env` sama dengan password MySQL.
 
-### `host.docker.internal` tidak ditemukan
+### Host networking tidak aktif
 
-Pastikan `extra_hosts` ada di `docker-compose.yaml` dan Docker Engine mendukung `host-gateway` (Docker 20.10+). Untuk Docker Desktop, `host.docker.internal` biasanya sudah tersedia.
+Jika muncul error bahwa host networking tidak didukung:
+
+- Di Docker Desktop, aktifkan host networking pada pengaturan Docker Desktop.
+- Di Linux, gunakan Docker Engine yang mendukung `network_mode: host`.
+- Jika tetap tidak tersedia, gunakan mode bridge sebagai fallback: hapus `network_mode: host`, tambahkan port mapping dan `extra_hosts`, lalu gunakan `DB_HOST=host.docker.internal` atau nama container MySQL pada network bersama.
 
 ### Permission denied pada `storage` atau `bootstrap/cache`
 
@@ -327,7 +328,7 @@ docker compose up -d --force-recreate
 docker compose exec rsud php artisan optimize:clear
 ```
 
-Tidak perlu mengubah `docker-compose.yaml`; port host dan container mengikuti `APP_PORT`.
+Tidak perlu mengubah `docker-compose.yaml`; aplikasi langsung listen di port `APP_PORT` pada host.
 
 ### `Vite manifest not found`
 

@@ -4,6 +4,87 @@
 @section('subtitle', 'Manage doctors & schedules')
 
 @section('content')
+    <style>
+        .doctor-card {
+            transition: opacity .25s ease;
+        }
+
+        .doctor-card.is-hidden-doctor .doctor-photo {
+            opacity: .45;
+            filter: grayscale(1);
+        }
+
+        .status-text {
+            transition: background .2s ease, color .2s ease;
+        }
+
+        .status-text.is-active {
+            background: rgba(16, 185, 129, .2);
+            color: #34d399;
+        }
+
+        .status-text.is-inactive {
+            background: rgba(239, 68, 68, .2);
+            color: #f87171;
+        }
+
+        .doctor-toggle {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            margin: 0;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .doctor-toggle input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .doctor-toggle .switch-track {
+            position: relative;
+            width: 42px;
+            height: 24px;
+            border-radius: 999px;
+            background: #475569;
+            transition: background .25s ease;
+        }
+
+        .doctor-toggle .switch-track::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+            transition: transform .25s ease;
+        }
+
+        .doctor-toggle input:checked+.switch-track {
+            background: #10b981;
+        }
+
+        .doctor-toggle input:checked+.switch-track::after {
+            transform: translateX(18px);
+        }
+
+        .doctor-toggle input:focus-visible+.switch-track {
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, .25);
+        }
+
+        .doctor-toggle.is-loading {
+            opacity: .55;
+            pointer-events: none;
+        }
+    </style>
+
     <div class="flex items-center justify-between mb-6">
         <div></div>
 
@@ -20,15 +101,15 @@
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
         @forelse($doctors as $doctor)
-            <div class="admin-card overflow-hidden hover-lift">
+            <div class="admin-card overflow-hidden hover-lift doctor-card {{ $doctor->is_active ? '' : 'is-hidden-doctor' }}">
 
                 {{-- Foto --}}
                 @if ($doctor->photo)
-                    <img src="{{ asset('img/dokter/' . $doctor->photo) }}" class="w-full h-60 object-contain bg-white"
-                        alt="{{ $doctor->name }}">
+                    <img src="{{ asset('img/dokter/' . $doctor->photo) }}"
+                        class="doctor-photo w-full h-60 object-contain bg-white" alt="{{ $doctor->name }}">
                 @else
                     <div
-                        class="w-full h-60 bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
+                        class="doctor-photo w-full h-60 bg-gradient-to-br from-primary-500/20 to-accent-500/20 flex items-center justify-center">
                         <svg class="w-12 h-12 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -117,17 +198,20 @@
                     </div>
 
                     {{-- Status --}}
-                    <div class="mt-2">
+                    <div class="mt-4 flex items-center justify-between gap-3">
 
-                        @if ($doctor->is_active)
-                            <span class="px-2 py-1 rounded-full text-xs bg-green-500/20 text-green-400">
-                                Active
-                            </span>
-                        @else
-                            <span class="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-400">
-                                Inactive
-                            </span>
-                        @endif
+                        <span
+                            class="status-text px-2 py-1 rounded-full text-xs {{ $doctor->is_active ? 'is-active' : 'is-inactive' }}">
+                            {{ $doctor->is_active ? 'Tampil' : 'Disembunyikan' }}
+                        </span>
+
+                        <label class="doctor-toggle" title="{{ $doctor->is_active ? 'Sembunyikan dokter' : 'Tampilkan dokter' }}">
+                            <input type="checkbox" class="toggle-active" role="switch"
+                                data-url="{{ route('admin.doctors.toggle-active', $doctor) }}"
+                                aria-label="{{ $doctor->is_active ? 'Sembunyikan dokter' : 'Tampilkan dokter' }}"
+                                @checked($doctor->is_active)>
+                            <span class="switch-track"></span>
+                        </label>
 
                     </div>
 
@@ -193,4 +277,53 @@
             {{ $doctors->links() }}
         </div>
     @endif
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.toggle-active').forEach(toggle => {
+                toggle.addEventListener('change', async function() {
+                    const card = this.closest('.doctor-card');
+                    const wrapper = this.closest('.doctor-toggle');
+                    const badge = card.querySelector('.status-text');
+                    const isActive = this.checked;
+
+                    wrapper.classList.add('is-loading');
+                    this.disabled = true;
+
+                    try {
+                        const response = await fetch(this.dataset.url, {
+                            method: 'PATCH',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            body: JSON.stringify({}),
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Gagal mengubah status dokter.');
+                        }
+
+                        card.classList.toggle('is-hidden-doctor', !data.is_active);
+                        badge.textContent = data.is_active ? 'Tampil' : 'Disembunyikan';
+                        badge.classList.toggle('is-active', data.is_active);
+                        badge.classList.toggle('is-inactive', !data.is_active);
+
+                        const label = data.is_active ? 'Sembunyikan dokter' : 'Tampilkan dokter';
+                        wrapper.title = label;
+                        this.setAttribute('aria-label', label);
+                    } catch (error) {
+                        this.checked = !isActive;
+                        alert(error.message || 'Gagal mengubah status dokter.');
+                    } finally {
+                        wrapper.classList.remove('is-loading');
+                        this.disabled = false;
+                    }
+                });
+            });
+        });
+    </script>
 @endsection

@@ -64,6 +64,10 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::patch('doctors/{doctor}/toggle-active', [AdminDoctorController::class, 'toggleActive'])
+        ->name('doctors.toggle-active');
+
     Route::resource('doctors', AdminDoctorController::class);
     Route::prefix('news')->name('news.')->group(function () {
         Route::get('/', [NewsController::class, 'adminIndex'])->name('index');
@@ -75,6 +79,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::delete('/image/{image}', [NewsController::class, 'destroyImage'])->name('image.destroy');
     });
     Route::resource('pkrs-categories', PkrsCategoryAdminController::class);
+
+    Route::patch('pkrs-posts/{pkrsPost}/toggle-publish', [PkrsPostController::class, 'togglePublish'])
+        ->name('pkrs-posts.toggle-publish');
 
     Route::resource('pkrs-posts', PkrsPostController::class);
     Route::prefix('pkrs-posts/{post}')

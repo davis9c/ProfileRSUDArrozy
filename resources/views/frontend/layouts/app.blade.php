@@ -3361,6 +3361,7 @@
                     categoryBadge: document.getElementById('pkrsDetailCategoryBadge'),
                     title: document.getElementById('pkrsDetailTitle'),
                     excerpt: document.getElementById('pkrsDetailExcerpt'),
+                    content: document.getElementById('pkrsDetailContent'),
                     views: document.getElementById('pkrsDetailViews'),
                     date: document.getElementById('pkrsDetailDate'),
                     like: document.getElementById('pkrsDetailLike'),
@@ -3697,6 +3698,12 @@
 
                 detail.excerpt.textContent =
                     post.excerpt || '';
+
+
+                if (detail.content) {
+                    detail.content.innerHTML =
+                        post.content || '';
+                }
 
 
                 detail.views.textContent =
@@ -4049,6 +4056,11 @@
 
                 if (detail.media) {
                     detail.media.innerHTML = '';
+                }
+
+
+                if (detail.content) {
+                    detail.content.innerHTML = '';
                 }
 
 

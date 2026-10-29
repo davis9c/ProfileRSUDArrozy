@@ -34,7 +34,7 @@ class AdminDoctorController extends Controller
             'schedules.*.day' => 'required_with:schedules|string',
             'schedules.*.start_time' => 'nullable',
             'schedules.*.end_time' => 'nullable',
-            'schedules.*.status' => 'required|in:praktik,Libur',
+            'schedules.*.status' => 'required|in:practice,holiday',
         ]);
 
         DB::beginTransaction();
@@ -92,6 +92,29 @@ class AdminDoctorController extends Controller
     public function create()
     {
         return view('admin.doctors.create');
+    }
+
+    public function toggleActive(Doctor $doctor)
+    {
+        try {
+
+            $doctor->is_active = ! $doctor->is_active;
+            $doctor->save();
+
+            return response()->json([
+                'success'   => true,
+                'is_active' => $doctor->is_active,
+                'message'   => $doctor->is_active
+                    ? 'Dokter ditampilkan di website.'
+                    : 'Dokter disembunyikan dari website.',
+            ]);
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function destroy(Doctor $doctor)

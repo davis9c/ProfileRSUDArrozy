@@ -10,18 +10,15 @@ services:
 
     working_dir: /var/www/html
 
-    # Port host dan container mengikuti APP_PORT di .env (default 8000).
-    ports:
-      - "${APP_PORT:-8000}:${APP_PORT:-8000}"
-
-    # MySQL dijalankan secara eksternal (host atau container terpisah).
-    # Gunakan DB_HOST=host.docker.internal di .env agar container bisa terhubung ke MySQL host.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # Host networking: container memakai network host, sehingga DB_HOST=127.0.0.1
+    # bisa digunakan meskipun MySQL berjalan di host atau di container lain
+    # yang mem-publish port 3306 ke host. Port aplikasi (APP_PORT) langsung
+    # dipakai di host; tidak perlu port mapping.
+    network_mode: host
 
     volumes:
       - ".:/var/www/html"
       # Pertahankan vendor dari image agar tidak tertimpa bind mount.
       - "/var/www/html/vendor"
 
-    command: php artisan serve --host=0.0.0.0
+    command: php artisan serve --host=0.0.0.0 --port=${APP_PORT:-8000}
