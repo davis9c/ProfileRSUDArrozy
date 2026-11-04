@@ -68,7 +68,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::patch('doctors/{doctor}/toggle-active', [AdminDoctorController::class, 'toggleActive'])
         ->name('doctors.toggle-active');
 
-    Route::resource('doctors', AdminDoctorController::class);
+    Route::resource('doctors', AdminDoctorController::class)->except('show');
     Route::prefix('news')->name('news.')->group(function () {
         Route::get('/', [NewsController::class, 'adminIndex'])->name('index');
         Route::get('/create', [NewsController::class, 'create'])->name('create');

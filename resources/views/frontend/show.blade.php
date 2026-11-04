@@ -102,7 +102,7 @@
                 <span>·</span>
 
                 <span>
-                    {{ $news->published_at->translatedFormat('d F Y') }}
+                    {{ optional($news->published_at)->translatedFormat('d F Y') ?? 'Tanggal belum tersedia' }}
                 </span>
 
                 <span>·</span>
@@ -419,7 +419,7 @@
                         <!-- THUMBNAIL -->
                         <!-- <div class="rz-news-thumb">
 
-                            <img src="{{ $item->thumbnail_url ?? asset('img/news/default.jpg') }}"
+                            <img src="{{ $item->thumbnail_url ?? asset('img/news/clinical.jpg') }}"
                                 alt="{{ $item->title }}">
 
                             <span class="rz-news-badge">
@@ -436,7 +436,7 @@
                             <div class="rz-news-meta">
 
                                 <span>
-                                    {{ $item->published_at->translatedFormat('d M Y') }}
+                                    {{ optional($item->published_at)->translatedFormat('d M Y') ?? '-' }}
                                 </span>
 
                                 <span class="rz-dot"></span>

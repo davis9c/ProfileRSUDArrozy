@@ -38,7 +38,7 @@ class NewsController extends Controller
             $featured->excerpt = $featured->excerpt ?: Str::limit(strip_tags($featured->content), 200);
         }
 
-        return view('frontend.news', ['title' => 'Dashboard RSUD Ar Rozy',  'active' => 'news'], compact('newsList', 'featured'));
+        return view('frontend.news', ['title' => 'Berita RSUD Ar Rozy',  'active' => 'news'], compact('newsList', 'featured'));
     }
 
     public function show($slug)
@@ -58,7 +58,7 @@ class NewsController extends Controller
 
         $contentBlocks = $this->buildContentBlocks($news->content, $news->images);
 
-        return view('frontend.show', ['title' => 'Dashboard RSUD Ar Rozy',  'active' => 'news'], compact('news', 'related', 'contentBlocks'));
+        return view('frontend.show', ['title' => 'Detail Berita RSUD Ar Rozy',  'active' => 'news'], compact('news', 'related', 'contentBlocks'));
     }
 
     private function buildContentBlocks(string $content, $images): array

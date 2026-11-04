@@ -43,7 +43,7 @@
                 @forelse ($newsList as $news)
                     <tr class="text-white/80">
                         <td class="px-5 py-3">
-                            <img src="{{ $news->thumbnail_url ?? asset('img/news/default.jpg') }}"
+                            <img src="{{ $news->thumbnail_url ?? asset('img/news/clinical.jpg') }}"
                                 class="w-14 h-14 rounded-lg object-cover">
                         </td>
                         <td class="px-5 py-3 max-w-xs">

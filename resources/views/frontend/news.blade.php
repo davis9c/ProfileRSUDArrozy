@@ -60,12 +60,12 @@
                             <div class="w-11 h-11 rounded-full flex items-center justify-center"
                                 style="background:#0D9488;">
                                 <span class="text-white text-sm font-semibold font-display">
-                                    {{ $featured->published_at->format('d') }}
+                                    {{ optional($featured->published_at)->format('d') ?? '-' }}
                                 </span>
                             </div>
                             <div>
                                 <p class="font-semibold text-sm" style="color:#0f172a;">
-                                    {{ $featured->published_at->translatedFormat('d F Y') }}
+                                    {{ optional($featured->published_at)->translatedFormat('d F Y') ?? 'Tanggal belum tersedia' }}
                                 </p>
                                 <p class="text-xs" style="color:#64748b;">{{ $featured->author }}</p>
                             </div>
@@ -94,7 +94,7 @@
                                 border-radius:1.25rem;
                                 background:transparent;">
                     </div>
-                    <img src="{{ $featured->thumbnail ? Storage::url($featured->thumbnail) : asset('img/news/default.jpg') }}" alt="{{ $featured->title }}"
+                    <img src="{{ $featured->thumbnail_url ?? asset('img/news/clinical.jpg') }}" alt="{{ $featured->title }}"
                         style="position:relative; z-index:2; width:100%; height:350px; object-fit:cover; border-radius:0.75rem; box-shadow:0 16px 32px -14px rgba(13,148,136,0.35); display:block;">
                     <div class="hidden md:block"
                         style="position:absolute; z-index:3; bottom:-14px; left:-14px; background:#FFFFFF; border-radius:0.5rem; padding:10px 14px; box-shadow:0 10px 25px -8px rgba(13,148,136,0.25); border:1px solid #eef1f4;">
@@ -256,7 +256,7 @@
                     <a href="{{ route('news.show', $news->slug) }}" class="block">
 
                         <!-- <div class="rz-news-thumb">
-                            <img src="{{ $news->thumbnail_url ?? asset('img/news/default.jpg') }}"
+                            <img src="{{ $news->thumbnail_url ?? asset('img/news/clinical.jpg') }}"
                                 alt="{{ $news->title }}">
                             <span class="rz-news-badge">{{ $news->category }}</span>
                         </div> -->
@@ -264,7 +264,7 @@
                         <div class="rz-news-body">
 
                             <div class="rz-news-meta">
-                                <span>{{ $news->published_at->translatedFormat('d M Y') }}</span>
+                                <span>{{ optional($news->published_at)->translatedFormat('d M Y') ?? '-' }}</span>
                                 <span class="rz-dot"></span>
                                 <span>{{ number_format($news->views) }} Dilihat</span>
                             </div>

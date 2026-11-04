@@ -104,22 +104,24 @@ class NewsSeeder extends Seeder
         ];
 
         foreach ($newsData as $data) {
-            News::create([
-                'title' => $data['title'],
-                'slug' => Str::slug($data['title']),
-                'content' => $data['content'],
-                'excerpt' => Str::limit(strip_tags($data['content']), 150),
-                'thumbnail' => $data['thumbnail'],
-                'category' => $data['category'],
-                'author' => $data['author'],
-                'status' => $data['status'],
-                'featured' => $data['featured'],
-                'views' => $data['views'],
-                'meta_title' => $data['title'],
-                'meta_description' => Str::limit(strip_tags($data['content']), 160),
-                'meta_keywords' => $data['category'] . ', RSUD Ar Rozy, Kesehatan Probolinggo',
-                'published_at' => now()->subDays(rand(0, 30)),
-            ]);
+            News::updateOrCreate(
+                ['slug' => Str::slug($data['title'])],
+                [
+                    'title' => $data['title'],
+                    'content' => $data['content'],
+                    'excerpt' => Str::limit(strip_tags($data['content']), 150),
+                    'thumbnail' => $data['thumbnail'],
+                    'category' => $data['category'],
+                    'author' => $data['author'],
+                    'status' => $data['status'],
+                    'featured' => $data['featured'],
+                    'views' => $data['views'],
+                    'meta_title' => $data['title'],
+                    'meta_description' => Str::limit(strip_tags($data['content']), 160),
+                    'meta_keywords' => $data['category'] . ', RSUD Ar Rozy, Kesehatan Probolinggo',
+                    'published_at' => now()->subDays(rand(0, 30)),
+                ]
+            );
         }
     }
 }

@@ -31,6 +31,12 @@ sudo apt install -y \
   php8.5-bcmath
 ```
 
+Jika ingin menjalankan test dengan konfigurasi bawaan `phpunit.xml` (SQLite in-memory), tambahkan:
+
+```bash
+sudo apt install -y php8.5-sqlite3
+```
+
 Verifikasi:
 
 ```bash
@@ -111,6 +117,7 @@ php artisan key:generate
 APP_PORT=8000
 APP_URL=http://localhost:${APP_PORT}
 SERVER_PORT="${APP_PORT}"
+APP_TIMEZONE=Asia/Jakarta
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -124,72 +131,27 @@ DB_PASSWORD=profile123
 
 Jika database atau kredensial berbeda, ubah bagian `DB_*` sesuai kondisi Anda.
 
-## 7. Migrasi dan Seeder Dasar
+## 7. Migrasi dan Seeder
 
 ```bash
 php artisan migrate --seed
 ```
 
-Seeder bawaan akan membuat:
+`DatabaseSeeder` akan membuat:
 
-- User admin
-- Data demo company profile
-- Berita
-- Service, portfolio, team, dan testimonial demo
+- User admin (`admin@company.com` / `password`).
+- Pengaturan situs RSUD Ar Rozy.
+- Data dokter dan jadwal praktik.
+- Berita contoh dan gambar tambahan.
+- Kategori PKRS.
+- Post PKRS (artikel, galeri, dan video).
+- Galeri foto PKRS.
 
-Jika muncul peringatan bahwa kategori PKRS belum ada, abaikan dulu. Kategori akan dibuat pada langkah berikut.
+Semua gambar dan video contoh memakai aset yang sudah tersedia di folder `public/`, sehingga tidak perlu membuat file placeholder tambahan.
 
-## 8. Seeder Tambahan
+## 8. Storage Link
 
-Jalankan seeder dokter dan gambar berita:
-
-```bash
-php artisan db:seed --class=DoctorSeeder
-php artisan db:seed --class=NewsImageSeeder
-```
-
-Buat kategori PKRS:
-
-```bash
-mysql -h 127.0.0.1 -u profile -p db_ar_profile <<'SQL'
-INSERT INTO pkrs_categories (name, slug, created_at, updated_at) VALUES
-  ('Quotes', 'quotes', NOW(), NOW()),
-  ('Promosi Kesehatan', 'promosi-kesehatan', NOW(), NOW()),
-  ('Artikel Kesehatan', 'artikel-kesehatan', NOW(), NOW()),
-  ('Kegiatan PKRS', 'kegiatan-pkrs', NOW(), NOW())
-ON DUPLICATE KEY UPDATE
-  name = VALUES(name),
-  updated_at = VALUES(updated_at);
-SQL
-```
-
-Masukkan password `profile123` saat diminta. Setelah kategori tersedia, jalankan:
-
-```bash
-php artisan db:seed --class=PkrsPostSeeder
-php artisan db:seed --class=PkrsGallerySeeder
-```
-
-## 9. Lengkapi Gambar Placeholder
-
-Beberapa seeder merujuk gambar placeholder yang tidak disertakan di repository. Buat salinannya:
-
-```bash
-cp public/img/news/clinical.jpg public/img/news/clinical1.jpg
-cp public/img/news/clinical.jpg public/img/news/clinical2.jpg
-cp public/img/news/clinical.jpg public/img/news/clinical3.jpg
-
-mkdir -p storage/app/public/dummy
-for i in 1 2 3 4 5; do
-  cp public/img/news/clinical.jpg "storage/app/public/dummy/gallery${i}.jpg"
-done
-```
-
-Gambar ini hanya placeholder untuk data demo. Ganti melalui admin panel jika diperlukan.
-
-## 10. Storage Link
-
-Symlink relatif sudah tersedia di repository. Buat ulang jika belum ada:
+Symlink `public/storage` **tidak disertakan di repository** karena diabaikan oleh Git. Buat setelah clone:
 
 ```bash
 rm -f public/storage
@@ -202,7 +164,7 @@ Pastikan symlink mengarah ke `storage/app/public`:
 ls -la public/storage
 ```
 
-## 11. Asset Frontend
+## 9. Asset Frontend
 
 Asset hasil build sudah tersedia di `public/build`, jadi langkah ini opsional. Jalankan hanya jika Anda mengubah CSS/JavaScript atau ingin memastikan asset terbaru:
 
@@ -219,7 +181,7 @@ npm run dev
 
 Jalankan `npm run dev` di terminal terpisah dari `php artisan serve`.
 
-## 12. Bersihkan Cache dan Jalankan Aplikasi
+## 10. Bersihkan Cache dan Jalankan Aplikasi
 
 ```bash
 php artisan optimize:clear
@@ -241,11 +203,13 @@ Untuk mengulang dari awal (menghapus seluruh data):
 
 ```bash
 php artisan migrate:fresh --seed
-php artisan db:seed --class=DoctorSeeder
-php artisan db:seed --class=NewsImageSeeder
 ```
 
-Ulangi langkah pembuatan kategori PKRS, `PkrsPostSeeder`, dan `PkrsGallerySeeder` setelahnya.
+Seluruh data dokter, berita, kategori PKRS, post PKRS, dan galeri akan dibuat ulang oleh `DatabaseSeeder`.
+
+## Catatan Dashboard
+
+Halaman `/dashboard` menampilkan data kunjungan dari API SIMRS eksternal yang dikonfigurasi langsung di `public/js/chartkunjungan.js` dan `public/js/info.js`. Jika API tidak dapat diakses, KPI dan grafik akan tampil kosong. Aplikasi ini tidak menyimpan tabel SIMRS secara lokal.
 
 ## Troubleshooting
 
@@ -283,6 +247,14 @@ npm run build
 ```
 
 Atau pastikan folder `public/build` ada.
+
+### Test gagal karena `could not find driver (sqlite)`
+
+`phpunit.xml` memakai SQLite in-memory. Install ekstensi `pdo_sqlite`:
+
+```bash
+sudo apt install -y php8.5-sqlite3
+```
 
 ### Port 8000 sudah dipakai
 

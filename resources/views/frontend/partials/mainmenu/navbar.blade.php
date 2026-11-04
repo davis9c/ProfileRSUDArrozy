@@ -1,6 +1,5 @@
 @php
 $active = $active ?? '';
-$roleCode = session('account_role_code') ?? '';
 @endphp
 <div class="rz-nav-scope"
     x-data="{ mobileMenu: false, minimized: false, scrolled: false }"

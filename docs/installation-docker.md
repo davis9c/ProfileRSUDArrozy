@@ -5,7 +5,7 @@ Panduan ini menjalankan aplikasi Laravel di Docker, sedangkan MySQL dijalankan s
 ## 1. Prasyarat
 
 - Docker Engine 24+ dengan dukungan host networking (Linux), atau Docker Desktop yang host networking-nya aktif
-- Docker Compose v2.24+ (untuk sintaks override bila diperlukan)
+- Docker Compose v2.20+
 - MySQL 8.0+ yang dapat diakses dari container aplikasi
 - Port `APP_PORT` (default `8000`) tersedia di host
 - Port `3306` MySQL dipublikasikan ke host jika MySQL berjalan di container
@@ -91,6 +91,7 @@ Ubah `.env` khusus untuk Docker:
 APP_PORT=8000
 APP_URL=http://localhost:${APP_PORT}
 SERVER_PORT="${APP_PORT}"
+APP_TIMEZONE=Asia/Jakarta
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -146,87 +147,37 @@ Generate application key:
 docker compose exec rsud php artisan key:generate
 ```
 
-Jalankan migrasi dan seeder dasar:
+Jalankan migrasi dan seluruh seeder:
 
 ```bash
 docker compose exec rsud php artisan migrate --seed
 ```
 
-Jalankan seeder dokter dan gambar berita:
+`DatabaseSeeder` akan membuat admin, pengaturan situs RSUD, dokter, berita, kategori PKRS, post PKRS, dan galeri PKRS.
 
-```bash
-docker compose exec rsud php artisan db:seed --class=DoctorSeeder
-docker compose exec rsud php artisan db:seed --class=NewsImageSeeder
-```
+## 6. Storage Link
 
-Buat kategori PKRS. Jika memakai MySQL container `rsud-mysql`:
-
-```bash
-docker exec -i rsud-mysql mysql -uprofile -pprofile123 db_ar_profile <<'SQL'
-INSERT INTO pkrs_categories (name, slug, created_at, updated_at) VALUES
-  ('Quotes', 'quotes', NOW(), NOW()),
-  ('Promosi Kesehatan', 'promosi-kesehatan', NOW(), NOW()),
-  ('Artikel Kesehatan', 'artikel-kesehatan', NOW(), NOW()),
-  ('Kegiatan PKRS', 'kegiatan-pkrs', NOW(), NOW())
-ON DUPLICATE KEY UPDATE
-  name = VALUES(name),
-  updated_at = VALUES(updated_at);
-SQL
-```
-
-Jika memakai MySQL native di host, gunakan:
-
-```bash
-mysql -h 127.0.0.1 -u profile -p db_ar_profile
-```
-
-lalu jalankan SQL yang sama.
-
-Setelah kategori dibuat:
-
-```bash
-docker compose exec rsud php artisan db:seed --class=PkrsPostSeeder
-docker compose exec rsud php artisan db:seed --class=PkrsGallerySeeder
-```
-
-## 6. Lengkapi Gambar Placeholder
-
-Karena folder project di-mount ke container, buat placeholder dari host:
-
-```bash
-cp public/img/news/clinical.jpg public/img/news/clinical1.jpg
-cp public/img/news/clinical.jpg public/img/news/clinical2.jpg
-cp public/img/news/clinical.jpg public/img/news/clinical3.jpg
-
-mkdir -p storage/app/public/dummy
-for i in 1 2 3 4 5; do
-  cp public/img/news/clinical.jpg "storage/app/public/dummy/gallery${i}.jpg"
-done
-```
-
-## 7. Storage Link
-
-Symlink relatif di repository berfungsi baik di host maupun di dalam container. Verifikasi:
-
-```bash
-docker compose exec rsud ls -la public/storage
-```
-
-Jika symlink belum ada, buat ulang dengan path relatif:
+Symlink `public/storage` **tidak disertakan di repository** karena diabaikan oleh Git. Buat dengan path relatif di dalam container:
 
 ```bash
 docker compose exec rsud sh -c 'rm -f public/storage && ln -s ../storage/app/public public/storage'
 ```
 
+Verifikasi:
+
+```bash
+docker compose exec rsud ls -la public/storage
+```
+
 Gunakan symlink relatif agar tidak bergantung pada path host atau path container.
 
-## 8. Bersihkan Cache
+## 7. Bersihkan Cache
 
 ```bash
 docker compose exec rsud php artisan optimize:clear
 ```
 
-## 9. Akses Aplikasi
+## 8. Akses Aplikasi
 
 - Frontend: `http://localhost:8000` (atau port sesuai `APP_PORT`)
 - Admin: `http://localhost:8000/admin/login` (atau port sesuai `APP_PORT`)
@@ -235,7 +186,7 @@ docker compose exec rsud php artisan optimize:clear
 
 Segera ganti password admin setelah login.
 
-## 10. Log dan Stop
+## 9. Log dan Stop
 
 Lihat log:
 
@@ -255,17 +206,15 @@ Stop sekaligus menghapus container aplikasi (volume MySQL eksternal tidak terhap
 docker compose down -v
 ```
 
-## 11. Reset Database
+## 10. Reset Database
 
-Untuk mengulang data demo:
+Untuk mengulang dari database kosong:
 
 ```bash
 docker compose exec rsud php artisan migrate:fresh --seed
-docker compose exec rsud php artisan db:seed --class=DoctorSeeder
-docker compose exec rsud php artisan db:seed --class=NewsImageSeeder
 ```
 
-Ulangi pembuatan kategori PKRS, `PkrsPostSeeder`, dan `PkrsGallerySeeder` setelahnya.
+Seluruh data dokter, berita, kategori PKRS, post PKRS, dan galeri akan dibuat ulang oleh `DatabaseSeeder`.
 
 Untuk menghapus database MySQL eksternal:
 
@@ -277,6 +226,10 @@ docker exec -it rsud-mysql mysql -uroot -proot -e "
 ```
 
 Sesuaikan kredensial jika MySQL bukan container `rsud-mysql`.
+
+## Catatan Dashboard
+
+Halaman `/dashboard` menampilkan data kunjungan dari API SIMRS eksternal yang dikonfigurasi langsung di `public/js/chartkunjungan.js` dan `public/js/info.js`. Jika API tidak dapat diakses, KPI dan grafik akan tampil kosong. Container aplikasi harus memiliki akses jaringan ke API tersebut.
 
 ## Troubleshooting
 

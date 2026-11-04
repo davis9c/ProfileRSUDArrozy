@@ -29,6 +29,6 @@ class NewsImage extends Model
             return $this->image_path;
         }
 
-        return Storage::url($this->image_path);
+        return Storage::disk('public')->url($this->image_path);
     }
 }

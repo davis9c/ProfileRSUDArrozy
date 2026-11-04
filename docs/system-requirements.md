@@ -49,6 +49,7 @@ Ekstensi opsional:
 - `exif` untuk metadata gambar
 - `intl` untuk dukungan internasionalisasi tambahan
 - `pcntl` untuk queue worker
+- `pdo_sqlite` untuk menjalankan test dengan konfigurasi bawaan `phpunit.xml` (SQLite in-memory)
 
 ## Verifikasi Environment
 
@@ -86,6 +87,8 @@ SERVER_PORT="${APP_PORT}"
 
 `APP_PORT` adalah nilai utama. `APP_URL` dan `SERVER_PORT` mengikuti nilai tersebut, sehingga cukup ubah `APP_PORT` jika port `8000` sudah dipakai. Untuk Docker, `docker-compose.yaml` memakai `network_mode: host`, sehingga aplikasi langsung listen di `APP_PORT` pada host.
 
+Zona waktu aplikasi dapat diatur melalui `APP_TIMEZONE` (default `Asia/Jakarta`).
+
 ## Kebutuhan Database
 
 Aplikasi menggunakan MySQL dengan konfigurasi default:
@@ -107,6 +110,8 @@ Untuk instalasi Docker, MySQL dijalankan secara eksternal (di host atau containe
 - MySQL harus dapat diakses dari aplikasi.
 - Jika aplikasi berjalan di Docker dan MySQL berjalan native di host Linux, aplikasi memakai host networking sehingga MySQL cukup mendengarkan `127.0.0.1`. Jika MySQL berjalan di container terpisah, publikasikan port `3306` ke host (misalnya `-p 127.0.0.1:3306:3306`).
 - Jika memakai CDN untuk font/icon (Google Fonts, Font Awesome, Swiper), koneksi internet diperlukan agar tampilan ikon dan font sempurna. Aplikasi tetap dapat berjalan tanpa CDN tersebut.
+- Halaman `/dashboard` membutuhkan akses ke API SIMRS eksternal. Jika API tidak dapat dijangkau, KPI dan grafik akan tampil kosong.
+- Test bawaan `phpunit.xml` memakai SQLite in-memory, sehingga memerlukan ekstensi `pdo_sqlite`.
 
 ## Catatan Produksi
 

@@ -115,7 +115,7 @@
                            flex items-center justify-center">
 
                                 <img id="previewPhoto"
-                                    src="{{ $doctor->photo ? asset('img/dokter/' . $doctor->photo) : asset('img/no-image.png') }}"
+                                    src="{{ $doctor->photo ? asset('img/dokter/' . $doctor->photo) : asset('img/dokter/instfar.png') }}"
                                     class="max-w-full max-h-full object-contain p-3 opacity-60
                                transition-all duration-300 scale-95">
 

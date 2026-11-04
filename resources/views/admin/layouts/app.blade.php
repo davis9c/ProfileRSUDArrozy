@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="{{ asset('img/ARION-ICON.png') }}" type="image/x-icon">
+    <link rel="icon" href="{{ asset('img/logo-pin-edit.png') }}" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin') - {{ config('app.name') }}</title>
@@ -179,17 +179,17 @@
                            flex items-center justify-center shadow-lg">
 
                             <img
-                                src="{{ asset('img/ARION-ICON.png') }}"
-                                alt="ARION"
-                                class="w-7 h-7 object-contain">
+                                src="{{ asset('img/logo-pin-edit.png') }}"
+                                alt="RSUD Ar Rozy"
+                                class="w-8 h-8 object-contain">
 
                         </div>
 
                         <div class="flex flex-col">
 
                             <span
-                                class="text-white font-bold text-xl tracking-wide">
-                                ARION
+                                class="text-white font-bold text-lg tracking-wide">
+                                RSUD Ar Rozy
                             </span>
 
                             <div

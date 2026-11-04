@@ -192,13 +192,17 @@ class DoctorSeeder extends Seeder
 
         foreach ($doctors as $item) {
 
-            $doctor = Doctor::create([
-                'name' => $item['name'],
-                'clinic' => $item['clinic'],
-                'photo' => $item['photo'],
-                'category' => $item['category'],
-                'is_active' => true,
-            ]);
+            $doctor = Doctor::updateOrCreate(
+                ['name' => $item['name']],
+                [
+                    'clinic' => $item['clinic'],
+                    'photo' => $item['photo'],
+                    'category' => $item['category'],
+                    'is_active' => true,
+                ]
+            );
+
+            $doctor->schedules()->delete();
 
             foreach ($item['schedule'] as $schedule) {
 

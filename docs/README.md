@@ -1,6 +1,6 @@
 # Dokumentasi RSUD Ar Rozy
 
-Dokumentasi ini menjelaskan cara menjalankan aplikasi Company Profile RSUD Ar Rozy di lingkungan lokal, baik tanpa Docker (native) maupun dengan Docker.
+Dokumentasi ini menjelaskan cara menjalankan website profil dan informasi RSUD Ar Rozy di lingkungan lokal, baik tanpa Docker (native) maupun dengan Docker.
 
 ## Daftar Isi
 
@@ -14,6 +14,7 @@ Dokumentasi ini menjelaskan cara menjalankan aplikasi Company Profile RSUD Ar Ro
 APP_PORT=8000
 APP_URL=http://localhost:${APP_PORT}
 SERVER_PORT="${APP_PORT}"
+APP_TIMEZONE=Asia/Jakarta
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -51,19 +52,16 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate --seed
-php artisan db:seed --class=DoctorSeeder
-php artisan db:seed --class=NewsImageSeeder
-# buat kategori PKRS terlebih dahulu (lihat panduan)
-php artisan db:seed --class=PkrsPostSeeder
-php artisan db:seed --class=PkrsGallerySeeder
 ln -sfn ../storage/app/public public/storage
 php artisan optimize:clear
 php artisan serve --host=0.0.0.0
 ```
 
+`php artisan migrate --seed` sudah menjalankan seluruh seeder: pengaturan situs, dokter, berita, kategori PKRS, post PKRS, dan galeri PKRS.
+
 Port mengikuti `SERVER_PORT` yang diturunkan dari `APP_PORT` di `.env`.
 
-Langkah lengkap, termasuk pembuatan database dan kategori PKRS, ada di [installation-native.md](installation-native.md).
+Langkah lengkap, termasuk pembuatan database, ada di [installation-native.md](installation-native.md).
 
 ### Docker
 
@@ -82,9 +80,12 @@ Langkah lengkap ada di [installation-docker.md](installation-docker.md).
 
 ## Catatan Penting
 
-- Project ini menggunakan MySQL, bukan SQLite.
+- Aplikasi menggunakan MySQL. Konfigurasi test bawaan (`phpunit.xml`) menggunakan SQLite in-memory dan memerlukan ekstensi `pdo_sqlite`.
 - Port aplikasi dikonfigurasi melalui `APP_PORT` di `.env`. Docker Compose memakai host networking, sehingga aplikasi langsung listen di port tersebut pada host.
 - Asset frontend hasil build sudah tersedia di `public/build`. Node.js hanya diperlukan jika Anda mengubah CSS/JavaScript lalu menjalankan `npm run build` atau `npm run dev`.
-- Data dari seeder adalah data demo. Seeder bawaan belum membuat kategori PKRS; ikuti langkah tambahan di panduan instalasi.
+- Seeder bawaan sudah membuat kategori PKRS, post PKRS, dan galeri PKRS.
+- Halaman `/dashboard` membutuhkan API SIMRS eksternal. Jika API tidak dapat diakses, KPI dan grafik akan tampil kosong.
+- Panel admin belum memiliki role/permission; saat ini hanya ada autentikasi admin tunggal.
+- Rating Google Review di beranda diatur melalui `GOOGLE_REVIEW_RATING` di `.env` dan perlu diperbarui manual secara berkala.
 - File `.env` tidak boleh di-commit. Gunakan `.env.example` sebagai template.
-- Folder `storage/app/public` terhubung ke `public/storage` melalui symlink relatif (`../storage/app/public`). Buat ulang symlink jika belum ada; lihat panduan instalasi.
+- Folder `storage/app/public` terhubung ke `public/storage` melalui symlink relatif (`../storage/app/public`). Symlink tidak disertakan di repository; buat setelah clone seperti pada panduan instalasi.

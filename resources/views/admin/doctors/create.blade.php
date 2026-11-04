@@ -110,7 +110,7 @@
                            shadow-xl overflow-hidden
                            flex items-center justify-center">
 
-                                <img id="previewPhoto" src="{{ asset('img/no-image.png') }}"
+                                <img id="previewPhoto" src="{{ asset('img/dokter/instfar.png') }}"
                                     class="max-w-full max-h-full object-contain p-3 opacity-60
                                transition-all duration-300 scale-95">
 

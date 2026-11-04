@@ -215,7 +215,7 @@
 
     <style>
         :root {
-            --rz-section-bg: url('{{ asset(' img/profile.jpg') }}');
+            --rz-section-bg: url('{{ asset('img/profile.jpg') }}');
         }
 
         .rz-hero-scope,
@@ -1269,7 +1269,7 @@
                     </div>
 
                     <div class="rz-stat__result">
-                        <span class="rz-stat__number">4,9</span>
+                        <span class="rz-stat__number">{{ config('hospital.google_review_rating') }}</span>
 
                         <span class="rz-stat__stars">
                             <i class="fa-solid fa-star"></i>
@@ -1307,13 +1307,9 @@
     $pkrsImage = null;
 
     if (!empty($p->thumbnail)) {
-    $pkrsImage = filter_var($p->thumbnail, FILTER_VALIDATE_URL)
-    ? $p->thumbnail
-    : asset('storage/' . $p->thumbnail);
+    $pkrsImage = $p->thumbnail_url;
     } elseif (!empty($p->video_cover)) {
-    $pkrsImage = filter_var($p->video_cover, FILTER_VALIDATE_URL)
-    ? $p->video_cover
-    : asset('storage/' . $p->video_cover);
+    $pkrsImage = $p->video_cover_url;
     }
 
     $infoItems->push((object) [

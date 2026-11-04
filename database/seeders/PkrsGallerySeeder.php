@@ -16,11 +16,15 @@ class PkrsGallerySeeder extends Seeder
 
             for ($i = 1; $i <= 5; $i++) {
 
-                PkrsGallery::create([
-                    'pkrs_post_id' => $post->id,
-                    'image' => "dummy/gallery{$i}.jpg",
-                    'sort_order' => $i,
-                ]);
+                PkrsGallery::updateOrCreate(
+                    [
+                        'pkrs_post_id' => $post->id,
+                        'sort_order' => $i,
+                    ],
+                    [
+                        'image' => '/img/news/clinical' . (($i - 1) % 3 + 1) . '.jpg',
+                    ]
+                );
 
             }
         }

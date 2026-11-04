@@ -202,10 +202,10 @@
 
 
 {{-- =========================================================
-        QUICK ACTIONS & RECENT MESSAGES
+        QUICK ACTIONS
     ========================================================== --}}
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 gap-6">
 
 
     {{-- =====================================================
@@ -388,85 +388,6 @@
                 </span>
 
             </a>
-
-        </div>
-
-    </div>
-
-
-        <div class="space-y-4">
-
-            @forelse($recentMessages as $message)
-
-            <a
-                href="{{ route('admin.messages.show', $message) }}"
-                class="flex items-start gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
-
-                <div
-                    class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center flex-shrink-0">
-
-                    <span
-                        class="text-white text-sm font-semibold">
-
-                        {{ substr($message->name, 0, 1) }}
-
-                    </span>
-
-                </div>
-
-
-                <div class="flex-1 min-w-0">
-
-                    <div class="flex items-center gap-2">
-
-                        <p
-                            class="text-white font-medium text-sm truncate">
-
-                            {{ $message->name }}
-
-                        </p>
-
-
-                        @if (!$message->is_read)
-
-                        <span
-                            class="w-2 h-2 rounded-full bg-primary-500">
-                        </span>
-
-                        @endif
-
-                    </div>
-
-
-                    <p
-                        class="text-white/50 text-xs truncate">
-
-                        {{ $message->subject ?? 'No subject' }}
-
-                    </p>
-
-
-                    <p
-                        class="text-white/30 text-xs mt-1">
-
-                        {{ $message->created_at->diffForHumans() }}
-
-                    </p>
-
-                </div>
-
-            </a>
-
-            @empty
-
-            <p
-                class="text-white/50 text-center py-4">
-
-                No messages yet
-
-            </p>
-
-            @endforelse
 
         </div>
 

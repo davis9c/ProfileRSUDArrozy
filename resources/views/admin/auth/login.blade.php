@@ -13,14 +13,11 @@
     <div class="w-full max-w-md">
         <!-- Logo -->
         <div class="text-center mb-8">
-            <div class="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+            <div class="w-20 h-20 rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <img src="{{ asset('img/logo-pin-edit.png') }}" alt="RSUD Ar Rozy" class="w-14 h-14 object-contain">
             </div>
-            <h1 class="text-2xl font-bold text-white">Admin Panel</h1>
-            <p class="text-white/50 mt-2">Sign in to manage your website</p>
+            <h1 class="text-2xl font-bold text-white">RSUD Ar Rozy</h1>
+            <p class="text-white/50 mt-2">Admin Panel</p>
         </div>
 
         <!-- Login Form -->

@@ -50,6 +50,6 @@ class News extends Model
             return $this->thumbnail;
         }
 
-        return Storage::url($this->thumbnail);
+        return Storage::disk('public')->url($this->thumbnail);
     }
 }

@@ -34,43 +34,30 @@ class PkrsPostSeeder extends Seeder
 
                 $title = "Post PKRS {$category->name} {$number}";
 
-                PkrsPost::create([
-                    'pkrs_category_id' => $category->id,
-
-                    'title' => $title,
-
-                    'slug' => Str::slug($title),
-
-                    'excerpt' => 'Ini adalah ringkasan edukasi kesehatan untuk kebutuhan dummy seeder.',
-
-                    'content' => '
-                        <p>
-                            Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                            Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-                        </p>
-                        <p>
-                            Konten ini hanya digunakan sebagai data dummy PKRS.
-                        </p>
-                    ',
-
-                    'thumbnail' => 'dummy/gallery1.jpg',
-
-                    'type' => $type,
-
-                    'video' => $type === 'video'
-                        ? 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-                        : null,
-
-                    'video_cover' => $type === 'video'
-                        ? 'dummy/gallery2.jpg'
-                        : null,
-
-                    'featured' => $number === 1,
-
-                    'is_published' => true,
-
-                    'published_at' => now()->subDays(rand(1, 30)),
-                ]);
+                PkrsPost::updateOrCreate(
+                    ['slug' => Str::slug($title)],
+                    [
+                        'pkrs_category_id' => $category->id,
+                        'title' => $title,
+                        'excerpt' => 'Ini adalah ringkasan edukasi kesehatan untuk kebutuhan dummy seeder.',
+                        'content' => '
+                            <p>
+                                Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                                Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                            </p>
+                            <p>
+                                Konten ini hanya digunakan sebagai data dummy PKRS.
+                            </p>
+                        ',
+                        'thumbnail' => '/img/news/clinical' . (($index % 3) + 1) . '.jpg',
+                        'type' => $type,
+                        'video' => $type === 'video' ? '/vid/senin.mp4' : null,
+                        'video_cover' => $type === 'video' ? '/img/news/clinical2.jpg' : null,
+                        'featured' => $number === 1,
+                        'is_published' => true,
+                        'published_at' => now()->subDays(rand(1, 30)),
+                    ]
+                );
             }
         }
     }
