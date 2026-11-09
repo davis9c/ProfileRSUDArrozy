@@ -157,6 +157,14 @@ docker compose exec rsud php artisan migrate --seed
 
 ## 6. Storage Link
 
+Media lama yang disimpan di `resources/app/public` dipakai sebagai Laravel public disk melalui bind mount di `docker-compose.yaml`. Struktur folder di dalamnya harus tetap sama dengan path media pada database lama. Upload baru melalui panel admin juga akan tersimpan di folder host tersebut; folder ini diabaikan Git dan tidak ikut terkirim ke GitHub. Saat deploy ke host baru, salin folder media ini secara manual sebelum menjalankan aplikasi.
+
+Jika container sudah berjalan sebelum bind mount ini ditambahkan, terapkan konfigurasi dengan membuat ulang container:
+
+```bash
+docker compose up -d --force-recreate
+```
+
 Symlink `public/storage` **tidak disertakan di repository** karena diabaikan oleh Git. Buat dengan path relatif di dalam container:
 
 ```bash

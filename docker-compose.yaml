@@ -20,5 +20,7 @@ services:
       - ".:/var/www/html"
       # Pertahankan vendor dari image agar tidak tertimpa bind mount.
       - "/var/www/html/vendor"
+      # Media lama dan upload baru tetap tersimpan di host, tanpa masuk Git.
+      - "./resources/app/public:/var/www/html/storage/app/public"
 
     command: php -d upload_max_filesize=64M -d post_max_size=96M artisan serve --host=0.0.0.0 --port=${APP_PORT:-8000}

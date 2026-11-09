@@ -44,3 +44,5 @@
 # Symlink storage
 public/storage
 
+# Media lama dan upload Docker, disimpan lokal dan tidak dikirim ke GitHub
+/resources/app/
